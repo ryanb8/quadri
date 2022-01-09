@@ -48,6 +48,12 @@ fn pieces_are_quadri(p1: &GamePiece, p2: &GamePiece, p3: &GamePiece, p4: &GamePi
     let l3 = [p1.at3, p2.at3, p3.at3, p4.at3];
     let l4 = [p1.at4, p2.at4, p3.at4, p4.at4];
 
+
+    println!("{:?}",all_equal(&l2));
+    println!("{:?}",all_equal(&l1));
+    println!("{:?}",all_equal(&l3));
+    println!("{:?}",all_equal(&l4));
+
     all_equal(&l1).unwrap() || all_equal(&l2).unwrap() || all_equal(&l3).unwrap() || all_equal(&l4).unwrap()
 //     p1.at1 + p2.at1 + p3.at1 + p4.at1 == 0 | p1.at1 + p2.at1 + p3.at1 + p4.at1 == 4
 //     p1.at2 + p2.at2 + p3.at2 + p4.at2 == 0 | p1.at2 + p2.at2 + p3.at2 + p4.at2 == 4
