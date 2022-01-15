@@ -56,9 +56,51 @@ impl GamePiece {
 
 
 #[derive(Debug)]
-struct Gameboard {
-    arrangement: Vec<Vec<Option<GamePiece>>>
+struct Gameboard<'a> {
+    xdim: usize,
+    ydim: usize,
+    arrangement: Vec<Vec<Option<&'a GamePiece>>>
 }
+
+impl Gameboard {
+    fn new(dim_x: i8, dim_y: i8) -> Result<Gameboard, String>{
+        if dim_x <= 0 || dim_y <= 0 {
+            return Err("Dims must be greater than or equal to 1".to_string());
+        }
+        let mut this_arrangement = Vec::new();
+        for ix in 0..dim_x as usize {
+            this_arrangement.push(Vec::new());
+            for _jx in 0..dim_y as usize {
+                this_arrangement[ix].push(None);
+            }
+        }
+        Ok(
+            Gameboard {
+                xdim: dim_x as usize,
+                ydim: dim_y as usize,
+                arrangement: this_arrangement
+            }
+        )
+    }
+    fn new_sq(dim: i8) -> Result<Gameboard, String>{
+        Gameboard::new(dim, dim)
+    }
+    fn get_piece(&self, x: usize, y: usize) -> Result<Option<&GamePiece>, String> {
+        if x < 0 || y < 0 || x >= self.xdim || y >= self.ydim {
+            return Err("Piece index out of bounds".to_string());
+        }
+        Ok(self.arrangement[x][y].as_ref())
+    }
+    fn get_pieces(&self, positions: Vec<[usize; 2]>) -> Result<Vec<Option<&GamePiece>>, String> {
+        positions
+            .into_iter()
+            .map(|pos| self.get_piece(pos[0], pos[1]))
+            .collect()
+    }
+    // fn place_piece(&self, piece: &GamePiece
+}
+
+
 
 
 fn all_equal(arr: Vec<i8>) -> Result<bool, String> {
