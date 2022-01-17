@@ -1,4 +1,9 @@
 use std::error::Error;
+use std::collections::HashMap;
+
+// TODO: Handle errors intelligently, none of this String mess
+// TODO: Tests
+// TODO: Split code into multiple files
 
 static ALLOWED_ATTRIBUTE_VALUES: [i8; 2] = [0, 1];
 
@@ -27,14 +32,22 @@ impl AV {
 
 #[derive(Debug)]
 #[derive(Clone)]
+#[derive(Hash)]
 struct GamePiece {
     name: String,
     ats: Vec<i8>,
     dim: i8
 }
 
+impl PartialEq for GamePiece {
+    fn eq(&self, other: &Self) -> bool {
+        self.ats == other.ats
+    }
+}
+impl Eq for GamePiece {}
+
 impl GamePiece {
-    fn new(values: &[i8], name: String) -> Result<GamePiece, String> {
+    fn new_from_array(values: &[i8], name: String) -> Result<GamePiece, String> {
         let dim: i8 = values.len().try_into().unwrap();
         if dim != 4 {
             return Err("Need 4 values for a piece".to_string());
@@ -47,6 +60,22 @@ impl GamePiece {
         Ok(GamePiece {
             name: name,
             ats: values.to_vec(),
+            dim: dim
+        })
+    }
+    fn new_from_vec(values: Vec<i8>, name: String) -> Result<GamePiece, String> {
+        let dim: i8 = values.len().try_into().unwrap();
+        if dim != 4 {
+            return Err("Need 4 values for a piece".to_string());
+        }
+        for v in &values {
+            if !AV::in_allowed_values(*v) {
+                return Err(format!("Values for pieces must be in {:?}", ALLOWED_ATTRIBUTE_VALUES));
+            }
+        }
+        Ok(GamePiece {
+            name: name,
+            ats: values,
             dim: dim
         })
     }
@@ -91,12 +120,12 @@ impl<'a> Gameboard<'a> {
         }
         result
     }
-    fn validate_indices(&self, x: usize, y: usize) -> Result<(), String> {
-        if !&self.has_valid_indicies(x, y) {
-            return Err("Piece index out of bounds".to_string());
-        }
-        Ok(())
-    }
+    // fn validate_indices(&self, x: usize, y: usize) -> Result<(), String> {
+    //     if !&self.has_valid_indicies(x, y) {
+    //         return Err("Piece index out of bounds".to_string());
+    //     }
+    //     Ok(())
+    // }
     fn new_sq(dim: i8) -> Result<Gameboard<'a>, String>{
         Gameboard::new(dim, dim)
     }
@@ -115,7 +144,7 @@ impl<'a> Gameboard<'a> {
     fn place_piece(&mut self, piece: &'a GamePiece, x: usize, y: usize) -> Result<(), String> {
         let current_piece = &self.get_piece(x, y)?;
 
-        if !current_piece.is_none() {
+        if let Some(_game_piece) = current_piece {
             return Err("Piece already on board".to_string());
         }
         self.arrangement[x][y] = Some(piece);
@@ -123,7 +152,8 @@ impl<'a> Gameboard<'a> {
     }
     fn remove_piece(&mut self, x: usize, y: usize) -> Result<(), String> {
         let current_piece = self.get_piece(x, y)?;
-        if current_piece.is_none() {
+
+        if let None = current_piece {
             return Err("Square is already piece-less".to_string());
         }
         self.arrangement[x][y] = None;
@@ -131,8 +161,100 @@ impl<'a> Gameboard<'a> {
     }
 }
 
+struct PieceLookup {
+    placement: HashMap<GamePiece, (Option<[usize; 2]>, usize)>
+    // pieces: Vec<GamePiece>,
+}
+
+impl PieceLookup {
+    fn new_sq(dim: usize) -> PieceLookup {
+        let pieces : Vec<GamePiece> =
+            (0..dim)
+            .map(|ix| convert_to_binary(ix))
+            .map(|v| GamePiece::new_from_vec(v, "placeholder".to_string()))
+            .collect::<Result<Vec<GamePiece>, String>>()
+            .unwrap();
+
+        let mut placement: HashMap<GamePiece, (Option<[usize; 2]>, usize)> = HashMap::new();
+        for (ix, gp) in pieces.into_iter().enumerate() {
+            placement.insert(gp, (None, ix));
+        }
+        PieceLookup {
+            placement: placement
+        }
+    }
+    fn list_pieces(&self) -> Vec<(usize, &GamePiece)> {
+        let mut pieces = Vec::new();
+        for (gp, loc_ix_tup) in &self.placement {
+            pieces.push((loc_ix_tup.1, gp));
+        }
+        pieces
+    }
+}
+
+// struct PiecePlacement<'a> {
+//     placement: HashMap<&'a GamePiece, Option<[usize; 2]>>
+// }
+
+// impl PieceList {
+//     fn new_sq(dim: usize) -> PiecePool<'a> {
+//         let pieces : Vec<GamePiece> = (0..dim)
+//             .map(|ix| convert_to_binary(ix))
+//             .map(|v| GamePiece::new_from_vec(v, "placeholder".to_string()))
+//             .collect::<Result<Vec<GamePiece>, String>>()
+//             .unwrap();
+//         PieceList {pieces: pieces}
+//     }
+// }
 
 
+
+// impl<'a> PiecePlacement<'a> {
+//     fn new_sq(p_list: &PieceList) -> PiecePlacement<'a> {
+//         PiecePool {
+//             placements: placements
+//         }
+
+//         let pieces : Vec<GamePiece> = (0..dim)
+//             .map(|ix| convert_to_binary(ix))
+//             .map(|v| GamePiece::new_from_vec(v, "placeholder".to_string()))
+//             .collect::<Result<Vec<GamePiece>, String>>()
+//             .unwrap();
+
+//         // let PieceList = PieceList::new(pieces);
+
+//         let mut placements: HashMap<&'a GamePiece, Option<[usize; 2]>> = HashMap::new();
+//         for gp_ref in pieces.iter() {
+//             placements.insert(&gp_ref, None);
+//         }
+//         // let placements: HashMap<&'a GamePiece, Option<[usize; 2]>> =
+//         //     pieces_references
+//         //         .into_iter()
+//         //         .map(|p| (p, None))
+//         //         .collect();
+
+
+//     }
+// }
+
+
+fn convert_to_binary(x: usize) -> Vec<i8> {
+    // usize => only 0 or positive integers
+    let mut binary = Vec::new();
+    let mut v = x;
+    while v > 0  {
+        let r = v % 2;
+        v = (v - r)/2;
+        binary.push(r as i8);
+    }
+    binary.reverse();
+    binary
+}
+
+// struct Game<'a> {
+//     piece_pool: PiecePool<'a>,
+//     game_board: Gameboard<'a>
+// }
 
 fn all_equal(arr: Vec<i8>) -> Result<bool, String> {
     let arr_len = arr.len();
@@ -151,7 +273,6 @@ fn all_equal(arr: Vec<i8>) -> Result<bool, String> {
     }
     Ok(result)
 }
-
 
 //assume all pieces have same dimensions
 fn pieces_are_quadri(pieces: Vec<&GamePiece>) -> Result<bool, String> {
@@ -174,11 +295,11 @@ fn pieces_are_quadri(pieces: Vec<&GamePiece>) -> Result<bool, String> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let piece1 = GamePiece::new(&[1,1,1,1], "tall_round_dark_full".to_string())?;
-    let piece2 = GamePiece::new(&[1,1,1,0], "tall_round_dark_hollow".to_string())?;
-    let piece3 = GamePiece::new(&[1,1,0,1], "tall_round_light_full".to_string())?;
-    let piece4 = GamePiece::new(&[1,0,1,1], "tall_square_dark_full".to_string())?;
-    let piece5 = GamePiece::new(&[0,1,1,1], "short_round_dark_full".to_string())?;
+    let piece1 = GamePiece::new_from_array(&[1,1,1,1], "tall_round_dark_full".to_string())?;
+    let piece2 = GamePiece::new_from_array(&[1,1,1,0], "tall_round_dark_hollow".to_string())?;
+    let piece3 = GamePiece::new_from_array(&[1,1,0,1], "tall_round_light_full".to_string())?;
+    let piece4 = GamePiece::new_from_array(&[1,0,1,1], "tall_square_dark_full".to_string())?;
+    let piece5 = GamePiece::new_from_array(&[0,1,1,1], "short_round_dark_full".to_string())?;
 
     let a_1_4_p = vec![&piece1, &piece2, &piece3, &piece4];
     let a_2_5_p = vec![&piece5, &piece2, &piece3, &piece4];
