@@ -26,6 +26,7 @@ impl AV {
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 struct GamePiece {
     name: String,
     ats: Vec<i8>,
@@ -62,8 +63,8 @@ struct Gameboard<'a> {
     arrangement: Vec<Vec<Option<&'a GamePiece>>>
 }
 
-impl Gameboard {
-    fn new(dim_x: i8, dim_y: i8) -> Result<Gameboard, String>{
+impl<'a> Gameboard<'a> {
+    fn new(dim_x: i8, dim_y: i8) -> Result<Gameboard<'a>, String>{
         if dim_x <= 0 || dim_y <= 0 {
             return Err("Dims must be greater than or equal to 1".to_string());
         }
@@ -82,14 +83,28 @@ impl Gameboard {
             }
         )
     }
-    fn new_sq(dim: i8) -> Result<Gameboard, String>{
+    fn has_valid_indicies(&self, x: usize, y: usize) -> bool {
+        let mut result = true;
+        // 0 indexed - usize enforces < 0
+        if x >= self.xdim || y >= self.ydim {
+            result = false;
+        }
+        result
+    }
+    fn validate_indices(&self, x: usize, y: usize) -> Result<(), String> {
+        if !&self.has_valid_indicies(x, y) {
+            return Err("Piece index out of bounds".to_string());
+        }
+        Ok(())
+    }
+    fn new_sq(dim: i8) -> Result<Gameboard<'a>, String>{
         Gameboard::new(dim, dim)
     }
     fn get_piece(&self, x: usize, y: usize) -> Result<Option<&GamePiece>, String> {
-        if x < 0 || y < 0 || x >= self.xdim || y >= self.ydim {
+        if !&self.has_valid_indicies(x, y) {
             return Err("Piece index out of bounds".to_string());
         }
-        Ok(self.arrangement[x][y].as_ref())
+        Ok(self.arrangement[x][y])
     }
     fn get_pieces(&self, positions: Vec<[usize; 2]>) -> Result<Vec<Option<&GamePiece>>, String> {
         positions
@@ -97,7 +112,23 @@ impl Gameboard {
             .map(|pos| self.get_piece(pos[0], pos[1]))
             .collect()
     }
-    // fn place_piece(&self, piece: &GamePiece
+    fn place_piece(&mut self, piece: &'a GamePiece, x: usize, y: usize) -> Result<(), String> {
+        let current_piece = &self.get_piece(x, y)?;
+
+        if !current_piece.is_none() {
+            return Err("Piece already on board".to_string());
+        }
+        self.arrangement[x][y] = Some(piece);
+        Ok(())
+    }
+    fn remove_piece(&mut self, x: usize, y: usize) -> Result<(), String> {
+        let current_piece = self.get_piece(x, y)?;
+        if current_piece.is_none() {
+            return Err("Square is already piece-less".to_string());
+        }
+        self.arrangement[x][y] = None;
+        Ok(())
+    }
 }
 
 
