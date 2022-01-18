@@ -1,11 +1,128 @@
 use std::error::Error;
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use colored::Colorize;
+use colored::ColoredString;
 
 // TODO: Handle errors intelligently, none of this String mess
 // TODO: Tests
 // TODO: Split code into multiple files
 
+// -- red/blue | capital/lowercase | X/O | underli
+// x_ x- X_ X-   <- red
+// x_ x- X_ X-   <- blue
+// o_ o- O_ O-   <- red
+// o_ o- O_ O-   <- blue
+
+
+// -- red/blue | capital/lowercase | X/O | underline/bold
+// +----+----+----+----+
+// | x_ | x- | X_ | X- |  <- red
+// +----+----+----+----+
+// | x_ | x- | X_ | X- |  <- blue
+// +----+----+----+----+
+// | o_ | o- | O_ | O- |  <- red
+// +----+----+----+----+
+// | o_ | o- | O_ | O- |  <- blue
+// +----+----+----+----+
+
 static ALLOWED_ATTRIBUTE_VALUES: [i8; 2] = [0, 1];
+static ALPHABET_ARRAY: [char; 26] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+static BOARD_SEPARATOR: &'static str = "+---+---+---+---+";
+static ROW_TEMPLATE: &'static str = "| {} | {} | {} | {} |";
+static EMPTY_SQUARE: &'static str = "   ";
+static RGB_WHITE: (u8, u8, u8) =  (255, 255, 255);
+static RGB_GREY: (u8, u8, u8) = (170, 170, 170);
+
+fn left_pad(mut v:Vec<i8>, p: i8, dim: usize) -> Vec<i8> {
+    let need_len = dim - v.len();
+    if need_len <= 0 {
+        return v
+    }
+    let mut new_v: Vec<i8> = Vec::new();
+    for ix in 0..need_len {
+        new_v.push(0);
+    }
+    new_v.append(&mut v);
+    new_v
+}
+
+fn vec_to_name(v: &Vec<i8>) -> Result<String, String> {
+    if v.len() != 4 {
+        return Err("Need vector of length 4".to_string());
+    }
+    for val in v {
+        if val > &1 || val < &0 {
+            return Err("All values must be 1 or 0".to_string())
+        }
+    }
+    let mut res = String::new();
+    //2
+    if v[1] == 0 {
+        res.push_str("red_");
+    } else {
+        res.push_str("blue_");
+    }
+    //3
+    if v[2] == 0 {
+        res.push_str("capital_");
+    } else {
+        res.push_str("lowercase_");
+    }
+    //4
+    if v[3] == 0 {
+        res.push_str("x_");
+    } else {
+        res.push_str("o_");
+    }
+        //1
+    if v[0] == 0 {
+        res.push_str("onWhite");
+    } else {
+        res.push_str("onGrey");
+    }
+    Ok(res)
+}
+
+fn vec_to_print(v: &Vec<i8>) -> Result<ColoredString, String> {
+    if v.len() != 4 {
+        return Err("Need vector of length 4".to_string());
+    }
+    for val in v {
+        if val > &1 || val < &0 {
+            return Err("All values must be 1 or 0".to_string())
+        }
+    }
+
+    // if v[3] == 0 && v[2] == 0 {
+
+    // } else if v[3] == 0 && v[2] == 1 {
+
+    // }
+    let res = match (v[3], v[2]) {
+        (0,0) => "x".to_string(),
+        (0,1) => "X".to_string(),
+        (1,0) => "o".to_string(),
+        (1,1) => "O".to_string(),
+        _ => return Err("All values must be 1 or 0".to_string())
+    };
+
+    //2
+    let mut res_c = match v[1] {
+        0 => res.red(),
+        1 => res.blue(),
+        _ => return Err("All values must be 1 or 0".to_string())
+    };
+    //1
+    res_c = match v[0] {
+        0 => res_c.on_truecolor(RGB_WHITE.0, RGB_WHITE.1, RGB_WHITE.2),
+        1 => res_c.on_truecolor(RGB_GREY.0, RGB_GREY.1, RGB_GREY.2),
+        _ => return Err("All values must be 1 or 0".to_string())
+    };
+
+    Ok(res_c)
+}
 
 #[derive(Debug)]
 struct AV(i8);  //allowed values
@@ -32,11 +149,11 @@ impl AV {
 
 #[derive(Debug)]
 #[derive(Clone)]
-#[derive(Hash)]
 struct GamePiece {
     name: String,
     ats: Vec<i8>,
-    dim: i8
+    dim: i8,
+    print: ColoredString
 }
 
 impl PartialEq for GamePiece {
@@ -45,9 +162,16 @@ impl PartialEq for GamePiece {
     }
 }
 impl Eq for GamePiece {}
+impl Hash for GamePiece{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.ats.hash(state);
+        self.dim.hash(state);
+    }
+}
 
 impl GamePiece {
-    fn new_from_array(values: &[i8], name: String) -> Result<GamePiece, String> {
+    fn new_from_array(values: &[i8]) -> Result<GamePiece, String> {
         let dim: i8 = values.len().try_into().unwrap();
         if dim != 4 {
             return Err("Need 4 values for a piece".to_string());
@@ -57,14 +181,20 @@ impl GamePiece {
                 return Err(format!("Values for pieces must be in {:?}", ALLOWED_ATTRIBUTE_VALUES));
             }
         }
+        let v = values.to_vec();
+        let name = vec_to_name(&v)?;
+        let print = vec_to_print(&v)?;
         Ok(GamePiece {
             name: name,
             ats: values.to_vec(),
-            dim: dim
+            dim: dim,
+            print: print
         })
     }
-    fn new_from_vec(values: Vec<i8>, name: String) -> Result<GamePiece, String> {
+    fn new_from_vec(values: Vec<i8>) -> Result<GamePiece, String> {
         let dim: i8 = values.len().try_into().unwrap();
+        println!("{:?}", dim);
+        println!("{:?}", values);
         if dim != 4 {
             return Err("Need 4 values for a piece".to_string());
         }
@@ -73,10 +203,13 @@ impl GamePiece {
                 return Err(format!("Values for pieces must be in {:?}", ALLOWED_ATTRIBUTE_VALUES));
             }
         }
+        let name = vec_to_name(&values)?;
+        let print = vec_to_print(&values)?;
         Ok(GamePiece {
             name: name,
             ats: values,
-            dim: dim
+            dim: dim,
+            print: print
         })
     }
     fn get_values(&self) -> &Vec<i8> {
@@ -159,6 +292,22 @@ impl<'a> Gameboard<'a> {
         self.arrangement[x][y] = None;
         Ok(())
     }
+    fn list_spaces(&self) -> Vec<(char, (usize, usize))> {
+        let mut spaces = Vec::new();
+        for ix in 0..self.xdim {
+            for jx in 0..self.ydim {
+                spaces.push((ALPHABET_ARRAY[(ix * jx * self.xdim) + jx], (ix, jx)))
+            }
+        }
+        spaces
+    }
+    // fn list_pieces(&self) -> Vec<(usize, &GamePiece)> {
+    //     let mut pieces = Vec::new();
+    //     for (gp, loc_ix_tup) in &self.placement {
+    //         pieces.push((loc_ix_tup.1, gp));
+    //     }
+    //     pieces
+    // }
 }
 
 struct PieceLookup {
@@ -168,10 +317,17 @@ struct PieceLookup {
 
 impl PieceLookup {
     fn new_sq(dim: usize) -> PieceLookup {
-        let pieces : Vec<GamePiece> =
+        let pieces1 : Vec<Vec<i8>> =
             (0..dim)
             .map(|ix| convert_to_binary(ix))
-            .map(|v| GamePiece::new_from_vec(v, "placeholder".to_string()))
+            .map(|v| left_pad(v, 0, 4))
+            .collect();
+
+        println!("{:?}", pieces1);
+
+        let pieces = pieces1
+            .into_iter()
+            .map(|v| GamePiece::new_from_vec(v))
             .collect::<Result<Vec<GamePiece>, String>>()
             .unwrap();
 
@@ -190,58 +346,24 @@ impl PieceLookup {
         }
         pieces
     }
+    fn list_available_pieces(&self) -> Vec<(usize, &GamePiece)> {
+        let mut pieces = Vec::new();
+        for (gp, loc_ix_tup) in &self.placement {
+            if loc_ix_tup.0.is_none() {
+                pieces.push((loc_ix_tup.1, gp));
+            }
+        }
+        pieces
+    }
 }
-
-// struct PiecePlacement<'a> {
-//     placement: HashMap<&'a GamePiece, Option<[usize; 2]>>
-// }
-
-// impl PieceList {
-//     fn new_sq(dim: usize) -> PiecePool<'a> {
-//         let pieces : Vec<GamePiece> = (0..dim)
-//             .map(|ix| convert_to_binary(ix))
-//             .map(|v| GamePiece::new_from_vec(v, "placeholder".to_string()))
-//             .collect::<Result<Vec<GamePiece>, String>>()
-//             .unwrap();
-//         PieceList {pieces: pieces}
-//     }
-// }
-
-
-
-// impl<'a> PiecePlacement<'a> {
-//     fn new_sq(p_list: &PieceList) -> PiecePlacement<'a> {
-//         PiecePool {
-//             placements: placements
-//         }
-
-//         let pieces : Vec<GamePiece> = (0..dim)
-//             .map(|ix| convert_to_binary(ix))
-//             .map(|v| GamePiece::new_from_vec(v, "placeholder".to_string()))
-//             .collect::<Result<Vec<GamePiece>, String>>()
-//             .unwrap();
-
-//         // let PieceList = PieceList::new(pieces);
-
-//         let mut placements: HashMap<&'a GamePiece, Option<[usize; 2]>> = HashMap::new();
-//         for gp_ref in pieces.iter() {
-//             placements.insert(&gp_ref, None);
-//         }
-//         // let placements: HashMap<&'a GamePiece, Option<[usize; 2]>> =
-//         //     pieces_references
-//         //         .into_iter()
-//         //         .map(|p| (p, None))
-//         //         .collect();
-
-
-//     }
-// }
-
 
 fn convert_to_binary(x: usize) -> Vec<i8> {
     // usize => only 0 or positive integers
     let mut binary = Vec::new();
     let mut v = x;
+    if v == 0 {
+        binary.push(0);
+    }
     while v > 0  {
         let r = v % 2;
         v = (v - r)/2;
@@ -251,10 +373,20 @@ fn convert_to_binary(x: usize) -> Vec<i8> {
     binary
 }
 
-// struct Game<'a> {
-//     piece_pool: PiecePool<'a>,
-//     game_board: Gameboard<'a>
-// }
+struct Game<'a> {
+    piece_lookup: PieceLookup,
+    game_board: Gameboard<'a>
+}
+
+impl<'a> Game<'a> {
+    fn new() -> Game<'a> {
+        let game_board = Gameboard::new_sq(4).unwrap();
+        Game {
+            piece_lookup: PieceLookup::new_sq(4),
+            game_board: game_board
+        }
+    }
+}
 
 fn all_equal(arr: Vec<i8>) -> Result<bool, String> {
     let arr_len = arr.len();
@@ -295,11 +427,11 @@ fn pieces_are_quadri(pieces: Vec<&GamePiece>) -> Result<bool, String> {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let piece1 = GamePiece::new_from_array(&[1,1,1,1], "tall_round_dark_full".to_string())?;
-    let piece2 = GamePiece::new_from_array(&[1,1,1,0], "tall_round_dark_hollow".to_string())?;
-    let piece3 = GamePiece::new_from_array(&[1,1,0,1], "tall_round_light_full".to_string())?;
-    let piece4 = GamePiece::new_from_array(&[1,0,1,1], "tall_square_dark_full".to_string())?;
-    let piece5 = GamePiece::new_from_array(&[0,1,1,1], "short_round_dark_full".to_string())?;
+    let piece1 = GamePiece::new_from_array(&[1,1,1,1])?;
+    let piece2 = GamePiece::new_from_array(&[1,1,1,0])?;
+    let piece3 = GamePiece::new_from_array(&[1,1,0,1])?;
+    let piece4 = GamePiece::new_from_array(&[1,0,1,1])?;
+    let piece5 = GamePiece::new_from_array(&[0,1,1,1])?;
 
     let a_1_4_p = vec![&piece1, &piece2, &piece3, &piece4];
     let a_2_5_p = vec![&piece5, &piece2, &piece3, &piece4];
@@ -309,6 +441,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Pieces 1 - 4 are quadri: {:?}", a_1_4);
     println!("Pieces 2- 5 are quadri: {:?}", a_2_5);
+
+    let game = Game::new();
+
 
     Ok(())
 }
