@@ -5,13 +5,6 @@ use std::hash::{Hash, Hasher};
 use std::collections::HashSet;
 use colored::Colorize;
 use colored::ColoredString;
-use std::io;
-use std::io::Write;
-use std::any::type_name;
-
-fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
-}
 
 // TODO: Handle errors intelligently, none of this String mess
 // TODO: Tests
@@ -50,7 +43,7 @@ static ALLOWED_ATTRIBUTE_VALUES: [i8; 2] = [0, 1];
 static ALPHABET_ARRAY: [char; 26] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
 static BOARD_SEPARATOR: &'static str = "+---+---+---+---+";
 static ROW_TEMPLATE: &'static str = "| {} | {} | {} | {} |";
-static EMPTY_SQUARE: &'static str = " ";
+static EMPTY_SQUARE: &'static str = "   ";
 static RGB_WHITE: (u8, u8, u8) =  (255, 255, 255);
 static RGB_GREY: (u8, u8, u8) = (255, 204, 0);
 
@@ -276,56 +269,29 @@ impl GamePiece {
 
 #[derive(Debug)]
 struct Gameboard {
-    xdim: usize,
-    ydim: usize,
+    // xdim: usize,
+    // ydim: usize,
     // arrangement: Vec<Vec<Option<&'a GamePiece>>>
-    // board: Vec<Vec<Option<usize>>>,
-    board: Vec<Option<usize>>,  //Stored in 1 d, managed rows/columns via helpers
+    board: Vec<Vec<Option<usize>>>,
     active_ixs: HashSet<usize>,
     empty_spaces: HashSet<[usize; 2]>,
     used_spaces:  HashSet<[usize; 2]>
 }
 
 impl Gameboard {
-    // fn new(dim_x: usize, dim_y: usize) -> Gameboard {
-    //     let mut this_board = Vec::new();
-    //     let mut empty_spaces = HashSet::new();
-    //     for ix in 0..dim_x as usize {
-    //         this_board.push(Vec::new());
-    //         for jx in 0..dim_y as usize {
-    //             this_board[ix].push(None);
-    //             empty_spaces.insert([ix, jx]);
-    //         }
-    //     }
-    //     Gameboard {
-    //         xdim: dim_x,
-    //         ydim: dim_y,
-    //         board: this_board,
-    //         active_ixs: HashSet::new(),
-    //         empty_spaces: empty_spaces,
-    //         used_spaces: HashSet::new()
-    //     }
-    // }
-    fn coord_to_ix(&self, x: &usize, y: &usize) -> usize {
-        x + (y * self.xdim)
-    }
-    fn ix_to_coord(&self, ix: &usize) -> [usize; 2] {
-        let x = ix % self.xdim;
-        let y = (ix - x)/self.xdim;
-        [x, y]
-    }
     fn new(dim_x: usize, dim_y: usize) -> Gameboard {
-        let mut this_board = Vec::<Option<usize>>::new();
+        let mut this_board = Vec::new();
         let mut empty_spaces = HashSet::new();
         for ix in 0..dim_x as usize {
+            this_board.push(Vec::new());
             for jx in 0..dim_y as usize {
-                this_board.push(None);
+                this_board[ix].push(None);
                 empty_spaces.insert([ix, jx]);
             }
         }
         Gameboard {
-            xdim: dim_x,
-            ydim: dim_y,
+            // xdim: dim_x,
+            // ydim: dim_y,
             board: this_board,
             active_ixs: HashSet::new(),
             empty_spaces: empty_spaces,
@@ -347,48 +313,49 @@ impl Gameboard {
         if !&self.has_valid_indicies(x, y) {
             return Err("Piece index out of bounds".to_string());
         }
-        Ok(self.board[self.coord_to_ix(&x, &y)])
+        Ok(self.board[x][y])
     }
     fn get_pieces(&self, positions: Vec<[usize; 2]>) -> Result<Vec<Option<usize>>, String> {
         positions
             .into_iter()
-            .map(|pos| self.get_piece_index(pos[0], pos[1]))
+            .map(|pos| self.get_piece(pos[0], pos[1]))
             .collect()
     }
     fn place_piece(&mut self, piece_index: usize, x: usize, y: usize) -> Result<usize, String> {
-        if let Some(_ix) = self.active_ixs.get(&piece_index) {
+        if let self.active_ixs.get(piece_index) = Some(_ix) {
             return Err("This piece already on board".to_string());
         }
-        if self.used_spaces.contains(&[x, y]) {
+        if self.used_spaces.contains([x, y]) {
             return Err("This space already occupied".to_string());
         }
-        let board_ix = self.coord_to_ix(&x, &y);
-        self.board[board_ix] = Some(piece_index);
+        self.board[x][y] = Some(piece_index);
         self.active_ixs.insert(piece_index);
-        self.empty_spaces.remove(&[x, y]);
+        self.empty_spaces.remove([x, y]);
         self.used_spaces.insert([x,y]);
         Ok(piece_index)
     }
     fn remove_piece(&mut self, x: usize, y: usize) -> Result<usize, String> {
-        let current_piece_index = self.get_piece_index(x, y)?.ok_or("Square is already piece-less".to_string())?;
-        let board_ix = self.coord_to_ix(&x, &y);
-        self.board[board_ix] = None;
-        self.active_ixs.remove(&current_piece_index);
+        if self.used_spaces.contains([x,y]) {
+            return Err("Square is already piece-less".to_string());
+        }
+
+        let current_piece_index = self.get_piece_index(x, y)?;
+        self.board[x][y] = None;
+        self.active_ixs.remove(current_piece_index);
         self.empty_spaces.insert([x,y]);
-        self.used_spaces.remove(&[x,y]);
+        self.used_spaces.remove([x,y]);
         Ok(current_piece_index)
     }
-    fn list_empty_spaces(&self) -> Vec<[usize; 2]> {
-        self.empty_spaces
-            .clone()
-            .into_iter()
-            .collect::<Vec<[usize;2]>>()
+    fn list_empty_spaces(&self) -> Vec<[usize, 2]> {
+        Vec::from_iter(self.empty_spaces)
     }
-    fn list_used_spaces(&self) -> Vec<[usize; 2]> {
-        self.used_spaces
-            .clone()
-            .into_iter()
-            .collect::<Vec<[usize;2]>>()
+    fn list_used_spaces(&self) -> Vec<[usize, 2]> {
+        Vec::from_iter(self.used_spaces)
+    }
+    fn ind_as_coord(x: usize, y:usize) -> (char, usize) {
+        let
+        let rem = x % 26;
+        ALPHABET_ARRAY[
     }
     // fn new(dim_x: i8, dim_y: i8) -> Result<Gameboard, String>{
     //     if dim_x <= 0 || dim_y <= 0 {
@@ -443,7 +410,7 @@ struct Pieces {
 impl Pieces {
     fn new_sq(dim: usize) -> Pieces {
         let num_pieces: usize = dim * dim;
-        let pieces : Vec<GamePiece> =
+        let pieces : Vec<Vec<i8>> =
             (0..num_pieces)
             .map(|ix| convert_to_binary(ix))
             .map(|v| left_pad(v, 0, 4))
@@ -521,88 +488,27 @@ impl Game {
             ydim: dim
         }
     }
-    fn get_unused_piece_ixs(&self) -> Vec<usize> {
-        let pieces_ixs = HashSet::from_iter(0..self.pieces.pieces.len());
-        pieces_ixs
-            .difference(&self.board.active_ixs)
-            .cloned()
-            .collect::<Vec<usize>>()
-    }
     fn list_avail_pieces_for_print(&self) -> Vec<String> {
-        let mut sorted_ixs = self.get_unused_piece_ixs();
-        sorted_ixs.sort();
-        sorted_ixs
+        self.board.active_ixs
             .into_iter()
-            .map(|ix| format!("{}", self.pieces.pieces[ix].print))
+            .collect()
+            .sort()
+            .into_iter()
+            .map(|ix| format!("{}\t{}", ix.to_string(), self.pieces.pieces[ix].print))
             .collect()
     }
-    fn list_avail_pieces_for_print_with_ix(&self) -> Vec<String> {
-        let mut pieces = &self.list_avail_pieces_for_print();
-        pieces
-            .into_iter()
-            .enumerate()
-            .map(|(ix, v)| format!("{}\t{}", ix.to_string(), v))
-            .collect()
-    }
-    fn choose_a_piece(&self, available_pieces: &Vec<String>) -> String {
-        let num_pieces = available_pieces.len();
-        let middle_ix = (num_pieces as f32 / 2.0).ceil() as usize;
-        let mut print_str = String::new();
-
-        for ix in 0..(middle_ix-1) {
-            let secondix = middle_ix + 1 + ix;
-            if secondix <= num_pieces {
-                let this_str = format!("{}\t{}\n", available_pieces[ix], available_pieces[secondix]);
-                print_str.push_str(&this_str);
+    fn choose_a_piece(&self) -> String {
+        let available_pieces = self.list_avail_pieces_for_print();
+        for (i, piece_str) in available_pieces.iter().enumerate() {
+            if i % 2 == 0 {
+                print_str.push_str(piece_str);
             } else {
-                let this_str = format!("{}\n", available_pieces[ix]);
+                let this_str = format!("\t{}\n", piece_str);
                 print_str.push_str(&this_str);
             }
         }
         print_str
     }
-    fn read_choosen_piece(&self, available_pieces: &Vec<String>) -> usize {
-        loop {
-            print!("Piece index:\t");
-            io::stdout().flush().unwrap();
-
-            let mut choosen_piece = String::new();
-
-            io::stdin()
-                .read_line(&mut choosen_piece)
-                .expect("Failed to read line");
-
-            if let Ok(v) = choosen_piece.trim_end().parse::<usize>() {
-                println!("{:?}", v);
-                if v <= (available_pieces.len() - 1) {
-                    return v;
-                } else {
-                    println!("Piece index out of bounds - try again")
-                }
-            } else {
-                println!("Unable to parse piece name")
-            }
-        }
-    }
-    fn game_board_string_proto(&self) -> String {
-        let mut board = String::new();
-        for ix in 0..self.xdim {
-            board.push_str(BOARD_SEPARATOR);
-            board.push_str("\n");
-            board.push_str(ROW_TEMPLATE);
-            board.push_str("\n");
-        }
-        board.push_str(BOARD_SEPARATOR);
-        board.push_str("\n");
-        board
-    }
-    // fn game_board_pieces(&self) -> String {
-    //     let mut board = &self.game_board_string_proto();
-    //     let pieces_str = &self.board.board
-    //         .into_iter()
-    //         .
-
-    // }
 
 
 
@@ -685,24 +591,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Pieces 1 - 4 are quadri: {:?}", a_1_4);
     println!("Pieces 2- 5 are quadri: {:?}", a_2_5);
 
-    let game = Game::new_sq(4);
+    let game = Game::new();
 
-    let available_pieces = &game.list_avail_pieces_for_print();
-    let available_pieces_w_ix = &game.list_avail_pieces_for_print_with_ix();
+    let mut available_pieces = &game.piece_lookup.list_available_pieces();
     println!("Pick a piece for your opponent to place");
-    let print_str = &game.choose_a_piece(available_pieces_w_ix);
+    let print_str = &game.choose_a_piece();
     println!("{}", print_str);
-    let choosen_piece_ix = &game.read_choosen_piece(&available_pieces);
-    // loop {
-    //     println!("Invalid input - type the index of the piece only.");
-    //     choosen_piece_ix_r = &game.read_choosen_piece(&available_pieces).clone();
-    // }
-    // let choosen_piece_ix = choosen_piece_ix_r.as_ref().unwrap();
-    println!("Opponent must place piece {}", available_pieces[*choosen_piece_ix]);
 
-    let board_proto = &game.game_board_string_proto();
-    println!("{}", board_proto);
-    // let print_str2 = &game.
+    let print_str2 = &game.
 
     // let game_print = String::new();
 
