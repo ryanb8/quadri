@@ -8,6 +8,7 @@ use colored::ColoredString;
 use std::io;
 use std::io::Write;
 use std::any::type_name;
+use std::iter::Zip;
 
 fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
@@ -65,7 +66,7 @@ fn num_to_alpha(n: usize) -> Result<String, String> {
     while v > 0  {
         let r = v % 26;
         v = (v - r)/26;
-        alpha.push(ALPHABET_ARRAY[r]);
+        alpha.push(ALPHABET_ARRAY[r-1]);
     }
     alpha.reverse();
     Ok(alpha)
@@ -281,9 +282,11 @@ struct Gameboard {
     // arrangement: Vec<Vec<Option<&'a GamePiece>>>
     // board: Vec<Vec<Option<usize>>>,
     board: Vec<Option<usize>>,  //Stored in 1 d, managed rows/columns via helpers
+    ix_as_alpha: Vec<String>,
     active_ixs: HashSet<usize>,
     empty_spaces: HashSet<[usize; 2]>,
-    used_spaces:  HashSet<[usize; 2]>
+    used_spaces:  HashSet<[usize; 2]>,
+    quadri_coords: Vec::<Vec<[usize;2]>>,
 }
 
 impl Gameboard {
@@ -314,23 +317,62 @@ impl Gameboard {
         let y = (ix - x)/self.xdim;
         [x, y]
     }
+    fn get_quadri_coords(&mut self) -> () {
+        // 0 indexed for both x and y
+        let mut quadri_coords = Vec::<Vec<[usize;2]>>::new();
+        //vertical
+        for ix in 0..self.xdim {
+            let this_v =
+                (0..self.ydim)
+                .map(|y| [ix, y])
+                .collect::<Vec<[usize;2]>>();
+            let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+            for ind in 0..(this_v.len()-3) {
+                these_vs.push((&this_v[ind..ind+4]).to_vec())
+            }
+            quadri_coords.append(&mut these_vs);
+        }
+        //horizontal
+        for jx in 0..self.ydim {
+            let this_v =
+                (0..self.xdim)
+                .map(|x| [x, jx])
+                .collect::<Vec<[usize;2]>>();
+            let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+            for ind in 0..(this_v.len()-3) {
+                these_vs.push((&this_v[ind..ind+4]).to_vec())
+            }
+            quadri_coords.append(&mut these_vs);
+        }
+        //TODO:
+        //diagonals
+        //squares
+        self.quadri_coords = quadri_coords;
+    }
     fn new(dim_x: usize, dim_y: usize) -> Gameboard {
         let mut this_board = Vec::<Option<usize>>::new();
         let mut empty_spaces = HashSet::new();
+        let mut ix_as_alpha = Vec::<String>::new();
         for ix in 0..dim_x as usize {
             for jx in 0..dim_y as usize {
                 this_board.push(None);
                 empty_spaces.insert([ix, jx]);
+                let this_alpha = num_to_alpha(((ix*dim_y) + jx + 1)).unwrap();
+                ix_as_alpha.push(this_alpha);
             }
         }
-        Gameboard {
+        let mut g = Gameboard {
             xdim: dim_x,
             ydim: dim_y,
             board: this_board,
+            ix_as_alpha: ix_as_alpha,
             active_ixs: HashSet::new(),
             empty_spaces: empty_spaces,
-            used_spaces: HashSet::new()
-        }
+            used_spaces: HashSet::new(),
+            quadri_coords: Vec::<Vec<[usize;2]>>::new(),
+        };
+        g.get_quadri_coords();
+        g
     }
     fn new_sq(dim: usize) -> Gameboard {
         Gameboard::new(dim, dim)
@@ -349,13 +391,14 @@ impl Gameboard {
         }
         Ok(self.board[self.coord_to_ix(&x, &y)])
     }
-    fn get_pieces(&self, positions: Vec<[usize; 2]>) -> Result<Vec<Option<usize>>, String> {
+    fn get_pieces_by_indicies(&self, positions: Vec<[usize; 2]>) -> Result<Vec<Option<usize>>, String> {
         positions
             .into_iter()
             .map(|pos| self.get_piece_index(pos[0], pos[1]))
             .collect()
     }
     fn place_piece(&mut self, piece_index: usize, x: usize, y: usize) -> Result<usize, String> {
+        println!("piece_index: {}, x: {}, y: {}", piece_index, x, y);
         if let Some(_ix) = self.active_ixs.get(&piece_index) {
             return Err("This piece already on board".to_string());
         }
@@ -528,6 +571,14 @@ impl Game {
             .cloned()
             .collect::<Vec<usize>>()
     }
+    fn list_available_pieces_for_print_2(&self) -> HashMap<usize, String> {
+        let mut sorted_ixs = self.get_unused_piece_ixs();
+        sorted_ixs.sort();
+        sorted_ixs
+            .into_iter()
+            .map(|ix| (ix, self.pieces.pieces[ix].print.to_string()))
+            .collect::<HashMap<usize, String>>()
+    }
     fn list_avail_pieces_for_print(&self) -> Vec<String> {
         let mut sorted_ixs = self.get_unused_piece_ixs();
         sorted_ixs.sort();
@@ -549,9 +600,9 @@ impl Game {
         let middle_ix = (num_pieces as f32 / 2.0).ceil() as usize;
         let mut print_str = String::new();
 
-        for ix in 0..(middle_ix-1) {
-            let secondix = middle_ix + 1 + ix;
-            if secondix <= num_pieces {
+        for ix in 0..(middle_ix) {
+            let secondix = middle_ix + ix;
+            if secondix < num_pieces {
                 let this_str = format!("{}\t{}\n", available_pieces[ix], available_pieces[secondix]);
                 print_str.push_str(&this_str);
             } else {
@@ -573,7 +624,6 @@ impl Game {
                 .expect("Failed to read line");
 
             if let Ok(v) = choosen_piece.trim_end().parse::<usize>() {
-                println!("{:?}", v);
                 if v <= (available_pieces.len() - 1) {
                     return v;
                 } else {
@@ -581,6 +631,60 @@ impl Game {
                 }
             } else {
                 println!("Unable to parse piece name")
+            }
+        }
+    }
+    fn read_choosen_piece2(&self, available_pieces_map: &HashMap<usize, String>) -> usize {
+        loop {
+            print!("Piece index:\t");
+            io::stdout().flush().unwrap();
+
+            let mut choosen_piece = String::new();
+
+            io::stdin()
+                .read_line(&mut choosen_piece)
+                .expect("Failed to read line");
+
+            if let Ok(v) = choosen_piece.trim_end().parse::<usize>() {
+                if available_pieces_map.contains_key(&v) {
+                    return v;
+                } else {
+                    println!("Piece index out of bounds - try again")
+                }
+            } else {
+                println!("Unable to parse piece name")
+            }
+        }
+    }
+    fn place_piece_on_choosen_space(&mut self, piece_ix: usize) -> usize {
+        loop {
+            print!("Space Label:\t");
+            io::stdout().flush().unwrap();
+
+            let mut choosen_space = String::new();
+
+            io::stdin()
+                .read_line(&mut choosen_space)
+                .expect("Failed to read line");
+
+            choosen_space = choosen_space.trim_end().to_lowercase();
+
+            let choosen_space_ix_opt = &self.board.ix_as_alpha
+                .iter()
+                .position(|a| a.to_string() == choosen_space);
+
+            match choosen_space_ix_opt {
+                Some(ix) => {
+                    if self.board.board[*ix].is_some() {
+                        println!("label provided is invlaid - try again")
+                    } else {
+                        let [x, y] = self.board.ix_to_coord(ix);
+                        println!("{}, {}", x, y);
+                        self.board.place_piece(piece_ix, x, y);
+                        return *ix
+                    }
+                },
+                None => println!("label provided is invlaid - try again")
             }
         }
     }
@@ -595,6 +699,99 @@ impl Game {
         board.push_str(BOARD_SEPARATOR);
         board.push_str("\n");
         board
+    }
+    fn game_board_string2(&self, pieces: Vec<Option<String>>, labels: Vec<Option<String>>) -> Result<String, String> {
+        if pieces.len() != self.xdim * self.ydim || labels.len() != self.xdim * self.ydim {
+            return Err("Pieces and labels must be the same size as the board".to_string())
+        }
+
+        let mut board = String::new();
+        for ix in 0..self.xdim {
+            board.push_str(BOARD_SEPARATOR);
+            board.push_str("\n");
+            // board.push_str(ROW_TEMPLATE);
+            board.push_str("| ");
+            for jx in 0..self.ydim {
+                let this_ind = (ix * self.ydim) + jx;
+                match (pieces[this_ind].as_ref(), labels[this_ind].as_ref()) {
+                    (Some(s), _)  => board.push_str(&s),
+                    (None, Some(l)) => board.push_str(&l),
+                    (None, None) => board.push_str(" "),
+                }
+                board.push_str(" | ");
+            }
+            board.trim();
+            board.push_str("\n");
+        }
+        board.push_str(BOARD_SEPARATOR);
+        board.push_str("\n");
+        Ok(board)
+    }
+    // fn game_board_string(&self, pieces: Vec<Option<String>>) -> Result<String, String> {
+    //     if pieces.len() != self.xdim * self.ydim {
+    //         return Err("pieces array is wrong length".to_string());
+    //     }
+    //     // TODO: use intersperse_with when fixed:
+    //     // https://github.com/rust-lang/rust/issues/79524
+    //     // Block Below:
+    //     // // let vec_of_strings = self.game_board_string_proto()
+    //     // //     .split(BOARD_SEPARATOR)
+    //     // //     .into_iter()
+    //     // //     .map(|s| s.to_string());
+    //     // // let result = pieces.iter()
+    //     // //     .map(|x| match x {
+    //     // //         Some(s) => s.to_string(),
+    //     // //         None => EMPTY_SQUARE.to_string()
+    //     // //     })
+    //     // //     .intersperse_with(|| vec_of_strings.next().unwrap())
+    //     // //     .collect::<Vec<String>>()
+    //     // //     .join("");
+    //     let board = self.game_board_string_proto();
+    //     let board_iter = board
+    //         .split(BOARD_SEPARATOR)
+    //         .into_iter()
+    //         .map(|x| x.to_string());
+    //     let mut result = String::new();
+    //     for (b, p) in board_iter.zip(pieces) {
+    //         result.push_str(&b);
+    //         match p {
+    //             Some(s) => result.push_str(&s),
+    //             None => result.push_str(&EMPTY_SQUARE)
+    //         }
+    //     }
+    //     Ok(result)
+    // }
+    fn pieces_by_position(&self) -> Vec<Option<String>> {
+        // let pieces_by_ix = ;
+
+        let string_vec = self.pieces.pieces
+            .iter()
+            .map(|p| p.print.to_string())
+            .collect::<Vec<String>>();
+
+        self.board.board
+            .iter()
+            .map(move |ix_opt| match ix_opt {
+                Some(ix) => Some(string_vec[*ix].clone()),
+                None => None
+            })
+            .collect::<Vec<Option<String>>>()
+
+
+        // self.board.board
+        //     .iter()
+        //     .map(|ix| {
+        //         match ix {
+        //             Some(n) => {
+        //                 let this_str = &self.pieces.pieces[*n].print.to_string();
+        //                 Some(this_str)
+        //             },
+        //             None => None
+        //         }
+        //     })
+        //     .collect::<Vec<Option<&String>>>()
+
+
     }
     // fn game_board_pieces(&self) -> String {
     //     let mut board = &self.game_board_string_proto();
@@ -685,23 +882,69 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Pieces 1 - 4 are quadri: {:?}", a_1_4);
     println!("Pieces 2- 5 are quadri: {:?}", a_2_5);
 
-    let game = Game::new_sq(4);
+    let mut game = Game::new_sq(4);
 
-    let available_pieces = &game.list_avail_pieces_for_print();
-    let available_pieces_w_ix = &game.list_avail_pieces_for_print_with_ix();
-    println!("Pick a piece for your opponent to place");
-    let print_str = &game.choose_a_piece(available_pieces_w_ix);
-    println!("{}", print_str);
-    let choosen_piece_ix = &game.read_choosen_piece(&available_pieces);
-    // loop {
-    //     println!("Invalid input - type the index of the piece only.");
-    //     choosen_piece_ix_r = &game.read_choosen_piece(&available_pieces).clone();
-    // }
-    // let choosen_piece_ix = choosen_piece_ix_r.as_ref().unwrap();
-    println!("Opponent must place piece {}", available_pieces[*choosen_piece_ix]);
+    println!("{:?}", game.board.quadri_coords);
 
-    let board_proto = &game.game_board_string_proto();
-    println!("{}", board_proto);
+    loop {
+        let available_pieces_map = &game.list_available_pieces_for_print_2();
+        if available_pieces_map.len() > 0 {
+            let mut available_pieces_v : Vec<(&usize, &String, String)> = available_pieces_map
+                .into_iter()
+                .map(|(ix, s)| (ix, s, format!("{}\t{}", ix, s)))
+                .collect();
+            available_pieces_v.sort_by_key(|k| k.0);
+            let available_pieces = available_pieces_v.iter().map(|(ix, s, ixs)| ixs.clone()).collect();
+            // let available_pieces = &game.list_avail_pieces_for_print();
+            // let available_pieces_w_ix = &game.list_avail_pieces_for_print_with_ix();
+            println!("Pick a piece for your opponent to place");
+            // let print_str = &game.choose_a_piece(available_pieces_w_ix);
+            let print_str = &game.choose_a_piece(&available_pieces);
+            println!("{}", print_str);
+            // let choosen_piece_ix = &game.read_choosen_piece(&available_pieces);
+            let choosen_piece_ix = &game.read_choosen_piece2(&available_pieces_map);
+            // loop {
+            //     println!("Invalid input - type the index of the piece only.");
+            //     choosen_piece_ix_r = &game.read_choosen_piece(&available_pieces).clone();
+            // }
+            // let choosen_piece_ix = choosen_piece_ix_r.as_ref().unwrap();
+            println!("Opponent must place piece {}", &available_pieces_map.get(choosen_piece_ix).ok_or("I screwed up!")?);
+
+            let mut labels = Vec::new();
+            let mut empty_labels = Vec::<Option<String>>::new();
+            for s in &game.board.ix_as_alpha {
+                labels.push(Some(s.to_string()));
+                empty_labels.push(None);
+            }
+            let pieces = &game.pieces_by_position();
+
+            println!("Pick a place for piece {}", &available_pieces_map.get(choosen_piece_ix).ok_or("I screwed up!")?);
+            println!("{}", &game.game_board_string2(pieces.to_vec(), labels)?);
+
+            let _ix = &mut game.place_piece_on_choosen_space(*choosen_piece_ix);
+            let pieces = &game.pieces_by_position();
+            println!("Current Board:");
+            println!("{}", &game.game_board_string2(pieces.to_vec(), empty_labels)?);
+            //TODO: Check for Quadris
+            // break if successful.
+        } else {
+            println!{"Draw!"};
+            break;
+        }
+    }
+
+
+
+
+    // game.board.ix_as_alpha.iter().map(|x| Some(x.to_string())).collect();
+    // println!("{:?}", labels);
+    // println!("{:?}", (1..(4*4)+1));
+    // println!("{}", num_to_alpha(27)?);
+    // let board_string = &game.game_board_string2(vec![None; 16], labels)?;
+    // println!("{}", board_string);
+
+    // let game_board_string = &game.game_board_string(game.pieces_by_position())?;
+    // println!("{}", game_board_string);
     // let print_str2 = &game.
 
     // let game_print = String::new();
