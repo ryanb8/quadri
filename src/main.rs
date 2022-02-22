@@ -10,6 +10,33 @@ use std::io::Write;
 use std::any::type_name;
 use std::iter::Zip;
 
+// struct PieceValue2 (i8);
+
+// impl PieceValue2 {
+//     fn value(&self) -> i8 {
+//         self.0
+//     }
+// }
+
+// enum PieceValues {
+//     One,
+//     Two,
+//     Three,
+//     Four,
+// }
+
+// impl PieceValues {
+//     fn value(&self) -> i8 {
+//         match &self {
+//             PieceValues::One => 1 as i8,
+//             PieceValues::Two => 2 as i8,
+//             PieceValues::Three => 3 as i8,
+//             PieceValues::Four => 4 as i8,
+//         }
+//     }
+// }
+
+
 fn print_type_of<T>(_: &T) {
     println!("{}", std::any::type_name::<T>())
 }
@@ -320,17 +347,20 @@ impl Gameboard {
     fn get_quadri_coords(&mut self) -> () {
         // 0 indexed for both x and y
         let mut quadri_coords = Vec::<Vec<[usize;2]>>::new();
+        let goal_len : usize  = 4;
         //vertical
         for ix in 0..self.xdim {
             let this_v =
                 (0..self.ydim)
                 .map(|y| [ix, y])
                 .collect::<Vec<[usize;2]>>();
-            let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-            for ind in 0..(this_v.len()-3) {
-                these_vs.push((&this_v[ind..ind+4]).to_vec())
+            if (this_v.len() >= goal_len) {
+                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+                for ind in 0..(this_v.len()-(goal_len-1)) {
+                    these_vs.push((&this_v[ind..ind+goal_len]).to_vec())
+                }
+                quadri_coords.append(&mut these_vs);
             }
-            quadri_coords.append(&mut these_vs);
         }
         //horizontal
         for jx in 0..self.ydim {
@@ -338,15 +368,98 @@ impl Gameboard {
                 (0..self.xdim)
                 .map(|x| [x, jx])
                 .collect::<Vec<[usize;2]>>();
-            let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-            for ind in 0..(this_v.len()-3) {
-                these_vs.push((&this_v[ind..ind+4]).to_vec())
+            if this_v.len() >= goal_len {
+                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+                for ind in 0..(this_v.len()-(goal_len - 1)) {
+                    these_vs.push((&this_v[ind..ind+goal_len]).to_vec())
+                }
+                quadri_coords.append(&mut these_vs);
             }
-            quadri_coords.append(&mut these_vs);
         }
-        //TODO:
         //diagonals
+        //top-line diagonals
+        for jx in 0..self.ydim {
+            let this_v_right =
+                (0..self.xdim)
+                //TODO combine filter map to avoid overflow error
+                .map(|k| [0+k, jx+k])
+                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .collect::<Vec<[usize;2]>>();
+            let this_v_left =
+                (0..self.xdim)
+                //TODO combine filter map to avoid overflow error
+                .map(|k| [0+k, jx-k])
+                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .collect::<Vec<[usize;2]>>();
+            if this_v_left.len() >= goal_len {
+                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+                for ind in 0..(this_v_left.len()-(goal_len-1)) {
+                    these_vs.push((&this_v_left[ind..ind+goal_len]).to_vec())
+                }
+                quadri_coords.append(&mut these_vs);
+            }
+            if this_v_right.len() >= goal_len {
+                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+                for ind in 0..(this_v_right.len()-(goal_len-1)) {
+                    these_vs.push((&this_v_right[ind..ind+goal_len]).to_vec())
+                }
+                quadri_coords.append(&mut these_vs);
+            }
+        }
+        // Left side diagonals
+        // Right side diagnoals
+        for ix in 0..self.xdim {
+            let this_v_right =
+                (1..self.ydim)  //already handled x ==0
+                //TODO combine filter map to avoid overflow error
+                .map(|k| [ix+k, 0+k])
+                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .collect::<Vec<[usize;2]>>();
+            let this_v_left =
+                (1..self.ydim)
+                //TODO combine filter map to avoid overflow error
+                .map(|k| [ix+k, self.ydim - 1 - k]) //already handled x ==0
+                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .collect::<Vec<[usize;2]>>();
+            if this_v_left.len() >= goal_len {
+                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+                for ind in 0..(this_v_left.len()-(goal_len-1)) {
+                    these_vs.push((&this_v_left[ind..ind+goal_len]).to_vec())
+                }
+                quadri_coords.append(&mut these_vs);
+            }
+            if this_v_right.len() >= goal_len {
+                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+                for ind in 0..(this_v_right.len()-(goal_len-1)) {
+                    these_vs.push((&this_v_right[ind..ind+goal_len]).to_vec())
+                }
+                quadri_coords.append(&mut these_vs);
+            }
+        }
+
         //squares
+        let max_square_distance = if (self.xdim < self.ydim) { self.xdim - 1 } else {self.ydim - 1};
+        for ix in (0..self.xdim) {
+            for jx in (0..self.ydim) {
+                let mut this_squares =
+                    (1..max_square_distance+1)
+                    .filter_map(|d| {
+                        if ( ix+d >= self.xdim || jx+d >= self.ydim) {
+                            return None
+                        }
+                        let this_square_a = [
+                            [ix,jx],
+                            [ix+d, jx],
+                            [ix, jx + d],
+                            [ix+d, jx + d]
+                        ];
+                        let this_square = this_square_a.to_vec();
+                        Some(this_square)
+                    })
+                    .collect::<Vec<Vec<[usize;2]>>>();
+                    quadri_coords.append(&mut this_squares);
+            }
+        }
         self.quadri_coords = quadri_coords;
     }
     fn new(dim_x: usize, dim_y: usize) -> Gameboard {
@@ -882,6 +995,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("Pieces 1 - 4 are quadri: {:?}", a_1_4);
     println!("Pieces 2- 5 are quadri: {:?}", a_2_5);
 
+    // println!("Piece one values: {}", PieceValues::One.value());
+
     let mut game = Game::new_sq(4);
 
     println!("{:?}", game.board.quadri_coords);
@@ -955,5 +1070,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // println!("{} {} !", "it".green().on_truecolor(135, 28, 167), "works".blue().bold().on_green());
 
+
+
     Ok(())
 }
+
+
+// 8642686295
+// Thornblade Country Club
+// Ford Taurus
+// 0dIDM0@wp0GC@dRErcFx
