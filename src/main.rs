@@ -382,14 +382,32 @@ impl Gameboard {
             let this_v_right =
                 (0..self.xdim)
                 //TODO combine filter map to avoid overflow error
-                .map(|k| [0+k, jx+k])
-                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .filter_map(|k| {
+                    let x : usize = k;
+                    let y : usize = jx+k;
+                    if (x >= 0 && x < self.xdim && y >= 0 && y < self.ydim) {
+                        return Some([x, y as usize])
+                    } else {
+                        return None
+                    }
+                })
+                // .map(|k| [0+k, jx+k])
+                // .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
                 .collect::<Vec<[usize;2]>>();
             let this_v_left =
                 (0..self.xdim)
                 //TODO combine filter map to avoid overflow error
-                .map(|k| [0+k, jx-k])
-                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .filter_map(|k| {
+                    let x : usize = k;
+                    let y : i32 = jx as i32 - k as i32;
+                    if (x >= 0 && x < self.xdim && y >= 0 && y < self.ydim as i32) {
+                        return Some([x, y as usize])
+                    } else {
+                        return None
+                    }
+                })
+                // .map(|k| [0+k, jx-k])
+                // .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
                 .collect::<Vec<[usize;2]>>();
             if this_v_left.len() >= goal_len {
                 let mut these_vs = Vec::<Vec<[usize;2]>>::new();
@@ -412,14 +430,31 @@ impl Gameboard {
             let this_v_right =
                 (1..self.ydim)  //already handled x ==0
                 //TODO combine filter map to avoid overflow error
-                .map(|k| [ix+k, 0+k])
-                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .filter_map(|k| {
+                    let x : usize = ix+k;
+                    let y : usize = 0+k;
+                    if (x >= 0 && x < self.xdim && y >= 0 && y < self.ydim) {
+                        return Some([ix+k, 0+k])
+                    } else {
+                        return None
+                    }
+                })
+                // .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
                 .collect::<Vec<[usize;2]>>();
             let this_v_left =
                 (1..self.ydim)
                 //TODO combine filter map to avoid overflow error
-                .map(|k| [ix+k, self.ydim - 1 - k]) //already handled x ==0
-                .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                // .map(|k| [ix+k, self.ydim - 1 - k]) //already handled x ==0
+                // .filter(|[x, y]| x >= &0 && x < &self.xdim && y >= &0 && y < &self.ydim)
+                .filter_map(|k| {
+                    let x : usize= ix + k;
+                    let y : i32 = self.ydim as i32 - 1 - k as i32;
+                    if (x >= 0 && x < self.xdim && y >= 0 && y < self.ydim as i32) {
+                        return Some([x, y as usize])
+                    } else {
+                        return None
+                    }
+                })
                 .collect::<Vec<[usize;2]>>();
             if this_v_left.len() >= goal_len {
                 let mut these_vs = Vec::<Vec<[usize;2]>>::new();
