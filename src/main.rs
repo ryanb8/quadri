@@ -339,11 +339,18 @@ impl Gameboard {
     fn coord_to_ix(&self, x: &usize, y: &usize) -> usize {
         x + (y * self.xdim)
     }
+    fn coords_to_ixs(&self, coords: &Vec<[usize;2]>) -> Vec<usize> {
+        coords
+            .iter()
+            .map(|a| self.coord_to_ix(&a[0], &a[1]))
+            .collect::<Vec<usize>>()
+    }
     fn ix_to_coord(&self, ix: &usize) -> [usize; 2] {
         let x = ix % self.xdim;
         let y = (ix - x)/self.xdim;
         [x, y]
     }
+
     fn get_quadri_coords(&mut self) -> () {
         // 0 indexed for both x and y
         let mut quadri_coords = Vec::<Vec<[usize;2]>>::new();
@@ -396,7 +403,6 @@ impl Gameboard {
                 .collect::<Vec<[usize;2]>>();
             let this_v_left =
                 (0..self.xdim)
-                //TODO combine filter map to avoid overflow error
                 .filter_map(|k| {
                     let x : usize = k;
                     let y : i32 = jx as i32 - k as i32;
@@ -539,10 +545,10 @@ impl Gameboard {
         }
         Ok(self.board[self.coord_to_ix(&x, &y)])
     }
-    fn get_pieces_by_indicies(&self, positions: Vec<[usize; 2]>) -> Result<Vec<Option<usize>>, String> {
+    fn get_pieces_by_indicies(&self, positions: &Vec<[usize; 2]>) -> Result<Vec<Option<usize>>, String> {
         positions
             .into_iter()
-            .map(|pos| self.get_piece_index(pos[0], pos[1]))
+            .map(|&pos| self.get_piece_index(pos[0], pos[1]))
             .collect()
     }
     fn place_piece(&mut self, piece_index: usize, x: usize, y: usize) -> Result<usize, String> {
@@ -651,6 +657,16 @@ impl Pieces {
         Pieces {
             pieces: pieces
         }
+    }
+    fn get_piece_ref(&self, ix: usize) -> &GamePiece {
+        //TODO: ensure ix is in correct range
+        &self.pieces[ix]
+    }
+    fn get_pieces_refs(&self, ixs: Vec<usize>) -> Vec<&GamePiece> {
+        ixs
+            .iter()
+            .map(|ix| self.get_piece_ref(*ix))
+            .collect()
     }
     // fn new_sq(dim: usize) -> PieceLookup {
     //     let num_pieces: usize = dim * dim;
@@ -1012,29 +1028,86 @@ fn pieces_are_quadri(pieces: Vec<&GamePiece>) -> Result<bool, String> {
     Ok(false)
 }
 
+fn check_for_all_quadris(game: &Game) -> (bool, Vec<Vec<[usize;2]>>) {
+
+    //:: <Vec<(usize, Vec<Option<usize>>)>>
+    let piece_index_sets = game.board.quadri_coords
+        .iter()
+        .enumerate()
+        .map(|(ix, v)| {
+            let this_piece_v_res = game.board.get_pieces_by_indicies(v);
+            let this_piece_v_unwrap = this_piece_v_res.unwrap();
+            (ix, this_piece_v_unwrap)
+        })
+        .collect::<Vec<(usize, Vec<Option<usize>>)>>();
+
+    let piece_index_sets2 =
+        piece_index_sets
+        .iter()
+        .filter_map(|(ix, v)| {
+            let vprime =
+                v
+                .iter()
+                .filter_map(|x| *x)
+                .collect::<Vec<usize>>();
+            match vprime.len() {
+                4 => Some((*ix, vprime)),
+                _ => None
+            }
+        })
+        .collect::<Vec<(usize, Vec<usize>)>>();
+    let piece_sets = piece_index_sets2
+        .iter()
+        .map(|(ix, v)| (*ix, game.pieces.get_pieces_refs(v.clone())))
+        .collect::<Vec<(usize, Vec<&GamePiece>)>>();
+    let quadri_results =
+        piece_sets
+        .iter()
+        .map(|(ix, ps)| {
+            let is_quadri = pieces_are_quadri(ps.to_vec()).unwrap();
+            (*ix, is_quadri)
+        })
+        .collect::<Vec<(usize, bool)>>();
+
+    let mut current_quadris = Vec::<Vec<[usize;2]>>::new();
+    let mut are_there_quadris = false;
+    for tup in quadri_results {
+        if tup.1 {
+            are_there_quadris = true;
+            current_quadris.push(game.board.quadri_coords[tup.0].clone())
+        }
+    }
+
+    (are_there_quadris, current_quadris)
+
+    // Convert indices to reference of pieces
+    // check for quadris
+    //
+}
+
 
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let piece1 = GamePiece::new_from_array(&[1,1,1,1])?;
-    let piece2 = GamePiece::new_from_array(&[1,1,1,0])?;
-    let piece3 = GamePiece::new_from_array(&[1,1,0,1])?;
-    let piece4 = GamePiece::new_from_array(&[1,0,1,1])?;
-    let piece5 = GamePiece::new_from_array(&[0,1,1,1])?;
+    // let piece1 = GamePiece::new_from_array(&[1,1,1,1])?;
+    // let piece2 = GamePiece::new_from_array(&[1,1,1,0])?;
+    // let piece3 = GamePiece::new_from_array(&[1,1,0,1])?;
+    // let piece4 = GamePiece::new_from_array(&[1,0,1,1])?;
+    // let piece5 = GamePiece::new_from_array(&[0,1,1,1])?;
 
-    let a_1_4_p = vec![&piece1, &piece2, &piece3, &piece4];
-    let a_2_5_p = vec![&piece5, &piece2, &piece3, &piece4];
+    // let a_1_4_p = vec![&piece1, &piece2, &piece3, &piece4];
+    // let a_2_5_p = vec![&piece5, &piece2, &piece3, &piece4];
 
-    let a_1_4 = pieces_are_quadri(a_1_4_p)?;
-    let a_2_5 = pieces_are_quadri(a_2_5_p)?;
+    // let a_1_4 = pieces_are_quadri(a_1_4_p)?;
+    // let a_2_5 = pieces_are_quadri(a_2_5_p)?;
 
-    println!("Pieces 1 - 4 are quadri: {:?}", a_1_4);
-    println!("Pieces 2- 5 are quadri: {:?}", a_2_5);
+    // println!("Pieces 1 - 4 are quadri: {:?}", a_1_4);
+    // println!("Pieces 2- 5 are quadri: {:?}", a_2_5);
 
     // println!("Piece one values: {}", PieceValues::One.value());
 
     let mut game = Game::new_sq(4);
 
-    println!("{:?}", game.board.quadri_coords);
+    // println!("{:?}", game.board.quadri_coords);
 
     loop {
         let available_pieces_map = &game.list_available_pieces_for_print_2();
@@ -1075,6 +1148,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             let pieces = &game.pieces_by_position();
             println!("Current Board:");
             println!("{}", &game.game_board_string2(pieces.to_vec(), empty_labels)?);
+            let (are_quadris, coords) = check_for_all_quadris(&game);
+            if are_quadris {
+                println!("Game is done! Winner!");
+                break;
+            }
             //TODO: Check for Quadris
             // break if successful.
         } else {
@@ -1109,9 +1187,3 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
-
-// 8642686295
-// Thornblade Country Club
-// Ford Taurus
-// 0dIDM0@wp0GC@dRErcFx
