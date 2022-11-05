@@ -5,9 +5,9 @@ use std::io;
 use std::io::Write;
 
 mod utils;
-mod gamepiece;
-use gamepiece::GamePiece;
-use gamepiece::Pieces;
+mod gamepieces;
+use gamepieces::GamePiece;
+use gamepieces::Pieces;
 
 // struct PieceValue2 (i8);
 
