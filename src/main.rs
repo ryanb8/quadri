@@ -7,6 +7,7 @@ use std::io::Write;
 mod utils;
 mod gamepiece;
 use gamepiece::GamePiece;
+use gamepiece::Pieces;
 
 // struct PieceValue2 (i8);
 
@@ -321,85 +322,6 @@ impl Gameboard {
     }
 }
 
-struct Pieces {
-    pieces: Vec<GamePiece>
-}
-
-impl Pieces {
-    fn new_sq(dim: usize) -> Pieces {
-        let num_pieces: usize = dim * dim;
-        let pieces : Vec<GamePiece> =
-            (0..num_pieces)
-            .map(|ix| utils::convert_to_binary(ix))
-            .map(|v| utils::left_pad(v, 4))
-            .map(|v| GamePiece::new_from_vec(v))
-            .collect::<Result<Vec<GamePiece>, String>>()
-            .unwrap();
-
-        // let pieces = pieces1
-        //     .into_iter()
-        //     .map(|v| GamePiece::new_from_vec(v))
-        //     .collect::<Result<Vec<GamePiece>, String>>()
-        //     .unwrap();
-
-        Pieces {
-            pieces: pieces
-        }
-    }
-    fn get_piece_ref(&self, ix: usize) -> &GamePiece {
-        //TODO: ensure ix is in correct range
-        &self.pieces[ix]
-    }
-    fn get_pieces_refs(&self, ixs: Vec<usize>) -> Vec<&GamePiece> {
-        ixs
-            .iter()
-            .map(|ix| self.get_piece_ref(*ix))
-            .collect()
-    }
-    // fn new_sq(dim: usize) -> PieceLookup {
-    //     let num_pieces: usize = dim * dim;
-    //     let pieces1 : Vec<Vec<i8>> =
-    //         (0..num_pieces)
-    //         .map(|ix| utils::convert_to_binary(ix))
-    //         .map(|v| left_pad(v, 0, 4))
-    //         .collect();
-
-    //     // println!("{:?}", pieces1);
-
-    //     let pieces = pieces1
-    //         .into_iter()
-    //         .enumerate()
-    //         .map(|(i, v)| GamePiece::new_from_vec(v, i as i8))
-    //         .collect::<Result<Vec<GamePiece>, String>>()
-    //         .unwrap();
-
-    //     let mut placement: HashMap<GamePiece, Option<[usize; 2]>> = HashMap::new();
-    //     for gp in pieces.into_iter() {
-    //         placement.insert(gp, None);
-    //     }
-    //     PieceLookup {
-    //         placement: placement
-    //     }
-    // }
-    // fn list_pieces(&self) -> Vec<(&Option<[usize; 2]>, &GamePiece)> {
-    //     let mut pieces = Vec::new();
-    //     for (gp, loc_tup) in &self.placement {
-    //         pieces.push((loc_tup, gp));
-    //     }
-    //     pieces
-    // }
-    // fn list_available_pieces(&self) -> Vec<&GamePiece> {
-    //     let mut pieces = Vec::new();
-    //     for (gp, loc_tup) in &self.placement {
-    //         if loc_tup.is_none() {
-    //             pieces.push(gp);
-    //         }
-    //     }
-    //     pieces.sort_by(|gp1, gp2| gp1.index.partial_cmp(&gp2.index).unwrap());
-    //     pieces
-    // }
-}
-
 struct Game {
     pieces: Pieces,
     board: Gameboard,
@@ -410,7 +332,7 @@ struct Game {
 impl Game {
     fn new_sq(dim: usize) -> Game {
         Game {
-            pieces: Pieces::new_sq(dim),
+            pieces: Pieces::new(),
             board: Gameboard::new_sq(dim),
             xdim: dim,
             ydim: dim

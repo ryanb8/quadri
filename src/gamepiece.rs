@@ -2,6 +2,8 @@ use std::hash::{Hash, Hasher};
 use colored::Colorize;
 use colored::ColoredString;
 
+use crate::utils;
+
 static ALLOWED_ATTRIBUTE_VALUES: [i8; 2] = [0, 1];
 static RGB_WHITE: (u8, u8, u8) =  (255, 255, 255);
 static RGB_GREY: (u8, u8, u8) = (255, 204, 0);
@@ -121,5 +123,37 @@ impl GamePiece {
             }
         };
         res_c
+    }
+}
+
+
+pub struct Pieces {
+    pub pieces: Vec<GamePiece>
+}
+
+impl Pieces {
+    pub fn new() -> Pieces {
+        let num_pieces: usize = 4 * 4;
+        let pieces : Vec<GamePiece> =
+            (0..num_pieces)
+            .map(|ix| utils::convert_to_binary(ix))
+            .map(|v| utils::left_pad(v, 4))
+            .map(|v| GamePiece::new_from_vec(v))
+            .collect::<Result<Vec<GamePiece>, String>>()
+            .unwrap();
+
+        Pieces {
+            pieces: pieces
+        }
+    }
+    pub fn get_piece_ref(&self, ix: usize) -> &GamePiece {
+        //TODO: ensure ix is in correct range
+        &self.pieces[ix]
+    }
+    pub fn get_pieces_refs(&self, ixs: Vec<usize>) -> Vec<&GamePiece> {
+        ixs
+            .iter()
+            .map(|ix| self.get_piece_ref(*ix))
+            .collect()
     }
 }
