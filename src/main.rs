@@ -1,11 +1,12 @@
 use std::error::Error;
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::collections::HashSet;
-use colored::Colorize;
-use colored::ColoredString;
 use std::io;
 use std::io::Write;
+
+mod utils;
+mod gamepiece;
+use gamepiece::GamePiece;
 
 // struct PieceValue2 (i8);
 
@@ -71,217 +72,8 @@ use std::io::Write;
 // | ▯ | ▯ | ▮ | ▮ |  <- blue
 // +---+---+---+---+
 
-static ALLOWED_ATTRIBUTE_VALUES: [i8; 2] = [0, 1];
-static ALPHABET_ARRAY: [char; 26] = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'];
+
 static BOARD_SEPARATOR: &'static str = "+---+---+---+---+";
-
-static RGB_WHITE: (u8, u8, u8) =  (255, 255, 255);
-static RGB_GREY: (u8, u8, u8) = (255, 204, 0);
-
-
-fn num_to_alpha(n: usize) -> Result<String, String> {
-    if n == 0 {
-        return Err("num must be greater than 0".to_string());
-    }
-
-    let mut v = n;
-    let mut alpha = String::new();
-    while v > 0  {
-        let r = v % 26;
-        v = (v - r)/26;
-        alpha.push(ALPHABET_ARRAY[r-1]);
-    }
-    alpha.reverse();
-    Ok(alpha)
-}
-
-fn convert_to_binary(x: usize) -> Vec<i8> {
-    // usize => only 0 or positive integers
-    let mut binary = Vec::new();
-    let mut v = x;
-    if v == 0 {
-        binary.push(0);
-    }
-    while v > 0  {
-        let r = v % 2;
-        v = (v - r)/2;
-        binary.push(r as i8);
-    }
-    binary.reverse();
-    binary
-}
-
-fn left_pad(mut v:Vec<i8>, dim: usize) -> Vec<i8> {
-    let need_len = dim - v.len();
-    if need_len <= 0 {
-        return v
-    }
-    let mut new_v: Vec<i8> = Vec::new();
-    for _ix in 0..need_len {
-        new_v.push(0);
-    }
-    new_v.append(&mut v);
-    new_v
-}
-
-fn vec_to_name(v: &Vec<i8>) -> Result<String, String> {
-    if v.len() != 4 {
-        return Err("Need vector of length 4".to_string());
-    }
-    for val in v {
-        if val > &1 || val < &0 {
-            return Err("All values must be 1 or 0".to_string())
-        }
-    }
-    let mut res = String::new();
-    //2
-    if v[1] == 0 {
-        res.push_str("red_");
-    } else {
-        res.push_str("blue_");
-    }
-    //3
-    if v[2] == 0 {
-        res.push_str("empty_");
-    } else {
-        res.push_str("full_");
-    }
-    //4
-    if v[3] == 0 {
-        res.push_str("rec_");
-    } else {
-        res.push_str("circle_");
-    }
-        //1
-    if v[0] == 0 {
-        res.push_str("onWhite");
-    } else {
-        res.push_str("onGrey");
-    }
-    Ok(res)
-}
-
-fn vec_to_print(v: &Vec<i8>) -> Result<ColoredString, String> {
-    if v.len() != 4 {
-        return Err("Need vector of length 4".to_string());
-    }
-    for val in v {
-        if val > &1 || val < &0 {
-            return Err("All values must be 1 or 0".to_string())
-        }
-    }
-
-    let res = match (v[3], v[2]) {
-        (0,0) => "▯".to_string(),
-        (0,1) => "▮".to_string(),
-        (1,0) => "○".to_string(),
-        (1,1) => "●".to_string(),
-        _ => return Err("All values must be 1 or 0".to_string())
-    };
-
-    let mut res_c = match v[1] {
-        0 => res.red().bold(),
-        1 => res.blue().bold(),
-        _ => return Err("All values must be 1 or 0".to_string())
-    };
-
-    res_c = match v[0] {
-        0 => res_c.on_truecolor(RGB_WHITE.0, RGB_WHITE.1, RGB_WHITE.2),
-        1 => res_c.on_truecolor(RGB_GREY.0, RGB_GREY.1, RGB_GREY.2),
-        _ => return Err("All values must be 1 or 0".to_string())
-    };
-
-    Ok(res_c)
-}
-
-#[derive(Debug)]
-struct AV(i8);  //allowed values
-
-impl AV {
-    fn in_allowed_values(value: i8) -> bool {
-        let mut is_valid = false;
-        for av in ALLOWED_ATTRIBUTE_VALUES {
-                if value == av {
-                    is_valid = true;
-                }
-            }
-        is_valid
-    }
-    // fn new(value: i8) -> Result<AV, String> {
-    //     let is_valid = AV::in_allowed_values(value);
-    //     if is_valid {
-    //         Ok(AV(value))
-    //     } else {
-    //         Err("Piece value is invalid".to_string())
-    //     }
-    // }
-}
-
-#[derive(Debug)]
-#[derive(Clone)]
-struct GamePiece {
-    name: String,
-    ats: Vec<i8>,
-    dim: i8,
-    print: ColoredString
-}
-
-impl PartialEq for GamePiece {
-    fn eq(&self, other: &Self) -> bool {
-        self.ats == other.ats
-    }
-}
-impl Eq for GamePiece {}
-impl Hash for GamePiece{
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.ats.hash(state);
-        self.dim.hash(state);
-    }
-}
-
-impl GamePiece {
-    // fn new_from_array(values: &[i8]) -> Result<GamePiece, String> {
-    //     let dim: i8 = values.len().try_into().unwrap();
-    //     if dim != 4 {
-    //         return Err("Need 4 values for a piece".to_string());
-    //     }
-    //     for v in values {
-    //         if !AV::in_allowed_values(*v) {
-    //             return Err(format!("Values for pieces must be in {:?}", ALLOWED_ATTRIBUTE_VALUES));
-    //         }
-    //     }
-    //     let v = values.to_vec();
-    //     let name = vec_to_name(&v)?;
-    //     let print = vec_to_print(&v)?;
-    //     Ok(GamePiece {
-    //         name: name,
-    //         ats: values.to_vec(),
-    //         dim: dim,
-    //         print: print
-    //     })
-    // }
-    fn new_from_vec(values: Vec<i8>) -> Result<GamePiece, String> {
-        let dim: i8 = values.len().try_into().unwrap();
-        if dim != 4 {
-            return Err("Need 4 values for a piece".to_string());
-        }
-        for v in &values {
-            if !AV::in_allowed_values(*v) {
-                return Err(format!("Values for pieces must be in {:?}", ALLOWED_ATTRIBUTE_VALUES));
-            }
-        }
-        let name = vec_to_name(&values)?;
-        let print = vec_to_print(&values)?;
-        Ok(GamePiece {
-            name: name,
-            ats: values,
-            dim: dim,
-            print: print
-        })
-    }
-}
-
 
 #[derive(Debug)]
 struct Gameboard {
@@ -462,7 +254,7 @@ impl Gameboard {
             for jx in 0..dim_y as usize {
                 this_board.push(None);
                 empty_spaces.insert([ix, jx]);
-                let this_alpha = num_to_alpha((ix*dim_y) + jx + 1).unwrap();
+                let this_alpha = utils::num_to_alpha((ix*dim_y) + jx + 1).unwrap();
                 ix_as_alpha.push(this_alpha);
             }
         }
@@ -538,8 +330,8 @@ impl Pieces {
         let num_pieces: usize = dim * dim;
         let pieces : Vec<GamePiece> =
             (0..num_pieces)
-            .map(|ix| convert_to_binary(ix))
-            .map(|v| left_pad(v, 4))
+            .map(|ix| utils::convert_to_binary(ix))
+            .map(|v| utils::left_pad(v, 4))
             .map(|v| GamePiece::new_from_vec(v))
             .collect::<Result<Vec<GamePiece>, String>>()
             .unwrap();
@@ -568,7 +360,7 @@ impl Pieces {
     //     let num_pieces: usize = dim * dim;
     //     let pieces1 : Vec<Vec<i8>> =
     //         (0..num_pieces)
-    //         .map(|ix| convert_to_binary(ix))
+    //         .map(|ix| utils::convert_to_binary(ix))
     //         .map(|v| left_pad(v, 0, 4))
     //         .collect();
 
