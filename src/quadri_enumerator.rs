@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::cmp::min;
 
 #[derive(Debug)]
 pub struct QuadriEnumerator {
@@ -14,149 +15,128 @@ impl QuadriEnumerator {
             y_dim: y_dim
         }
     }
-    fn check_if_empty(&self, len: usize) -> bool {
-        len == 0 || self.x_dim == 0 || self.y_dim == 0
+    fn check_if_empty(len: usize, x_dim: usize, y_dim: usize) -> bool {
+        len == 0 || x_dim == 0 || y_dim == 0
     }
-
-    pub fn get_horizontal(&self, len: usize) -> Vec::<Vec<[usize;2]>> {
+    fn transpose_coordinates(coords: &mut Vec::<Vec<[usize;2]>>) -> () {
+        for v in coords {
+            for c in v {
+                c.reverse()
+            }
+        }
+    }
+    fn get_full_horizontal_lines(x_dim: usize, y_dim:usize) -> Vec::<Vec<[usize;2]>> {
         let mut res = Vec::<Vec<[usize;2]>>::new();
-        if self.check_if_empty(len) {
+        if x_dim == 0 || y_dim == 0 {
+            return res;
+        }
+        for jx in 0..y_dim {
+            let this_v =
+                (0..x_dim)
+                .map(|x| [x, jx])
+                .collect::<Vec<[usize;2]>>();
+            res.push(this_v);
+        }
+        res
+    }
+    fn get_full_right_diagonals(x_dim: usize, y_dim: usize) -> Vec::<Vec<[usize;2]>> {
+        let mut res = Vec::<Vec<[usize;2]>>::new();
+        if x_dim == 0 || y_dim == 0 {
             return res;
         }
 
-        for jx in 0..self.y_dim {
+        // left side coords
+        let mut starting_coords =             (0..y_dim)
+            .map(|y| [0, y])
+            .collect::<Vec<[usize;2]>>();
+
+        //top coords without origin
+        starting_coords.append(
+            &mut (1..x_dim)
+            .map(|x| [x, 0])
+            .collect::<Vec<[usize;2]>>()
+        );
+
+        for c in starting_coords {
+            let num_steps_available = min(x_dim - c[0], y_dim - c[1]);
             let this_v =
-                (0..self.x_dim)
-                .map(|x| [x, jx])
+                (0..num_steps_available)
+                .map(|s| [c[0]+ s, c[1] + s])
                 .collect::<Vec<[usize;2]>>();
-            if this_v.len() >= len {
+            res.push(this_v);
+        }
+        res
+    }
+    fn get_full_left_diagonals(x_dim: usize, y_dim: usize) -> Vec::<Vec<[usize;2]>> {
+        let mut res = Vec::<Vec<[usize;2]>>::new();
+        if x_dim == 0 || y_dim == 0 {
+            return res;
+        }
+
+        // right side coords
+        let mut starting_coords =             (0..y_dim)
+            .map(|y| [x_dim - 1 , y])
+            .collect::<Vec<[usize;2]>>();
+
+        //top coords without top-right most
+        starting_coords.append(
+            &mut (0..x_dim-1)
+            .map(|x| [x, 0])
+            .collect::<Vec<[usize;2]>>()
+        );
+
+        println!("{:?}", starting_coords);
+
+        for c in starting_coords {
+            let num_steps_available = min(c[0] + 1, y_dim - c[1]);
+            let this_v =
+                (0..num_steps_available)
+                .map(|s| [c[0]- s, c[1] + s])
+                .collect::<Vec<[usize;2]>>();
+            res.push(this_v);
+        }
+        res
+    }
+
+    fn sliding_windows_of_len(coord_sets: Vec::<Vec<[usize;2]>>, len: usize) -> Vec::<Vec<[usize;2]>> {
+        let mut res = Vec::<Vec<[usize;2]>>::new();
+        if len == 0 {
+            return res;
+        }
+        for v in coord_sets {
+            if v.len() >= len {
                 let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-                for ind in 0..(this_v.len()-(len - 1)) {
-                    these_vs.push((&this_v[ind..ind+len]).to_vec())
+                for ind in 0..(v.len()-(len - 1)) {
+                    these_vs.push((&v[ind..ind+len]).to_vec())
                 }
                 res.append(&mut these_vs)
             }
         }
         res
     }
+    fn get_horizontal_lines(len: usize,  x_dim: usize, y_dim: usize) -> Vec::<Vec<[usize;2]>> {
+        let coord_sets = QuadriEnumerator::get_full_horizontal_lines(x_dim, y_dim);
+        QuadriEnumerator::sliding_windows_of_len(coord_sets, len)
+    }
 
-    // fn get_quadri_coords(&mut self) -> () {
-    //     // 0 indexed for both x and y
-    //     let mut quadri_coords = Vec::<Vec<[usize;2]>>::new();
-    //     let goal_len : usize  = 4;
-    //     //vertical
-    //     for ix in 0..X_DIM {
-    //         let this_v =
-    //             (0..self.ydim)
-    //             .map(|y| [ix, y])
-    //             .collect::<Vec<[usize;2]>>();
-    //         if this_v.len() >= goal_len {
-    //             let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-    //             for ind in 0..(this_v.len()-(goal_len-1)) {
-    //                 these_vs.push((&this_v[ind..ind+goal_len]).to_vec())
-    //             }
-    //             quadri_coords.append(&mut these_vs);
-    //         }
-    //     }
-    //     //horizontal
-    //     for jx in 0..Y_DIM {
-    //         let this_v =
-    //             (0..X_DIM)
-    //             .map(|x| [x, jx])
-    //             .collect::<Vec<[usize;2]>>();
-    //         if this_v.len() >= goal_len {
-    //             let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-    //             for ind in 0..(this_v.len()-(goal_len - 1)) {
-    //                 these_vs.push((&this_v[ind..ind+goal_len]).to_vec())
-    //             }
-    //             quadri_coords.append(&mut these_vs);
-    //         }
-    //     }
-    //     //diagonals
-    //     //top-line diagonals
-    //     for jx in 0..self.ydim {
-    //         let this_v_right =
-    //             (0..X_DIM)
-    //             .filter_map(|k| {
-    //                 let x : usize = k;
-    //                 let y : usize = jx+k;
-    //                 if x < X_DIM && y < Y_DIM { //x >= 0 &&  \y >= 0 per usize
-    //                     return Some([x, y as usize])
-    //                 } else {
-    //                     return None
-    //                 }
-    //             })
-    //             .collect::<Vec<[usize;2]>>();
-    //         let this_v_left =
-    //             (0..X_DIM)
-    //             .filter_map(|k| {
-    //                 let x : usize = k;
-    //                 let y : i32 = jx as i32 - k as i32;
-    //                 if x < X_DIM && y >= 0 && y < Y_DIM as i32 { //x >= 0 per usize
-    //                     return Some([x, y as usize])
-    //                 } else {
-    //                     return None
-    //                 }
-    //             })
-    //             .collect::<Vec<[usize;2]>>();
-    //         if this_v_left.len() >= goal_len {
-    //             let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-    //             for ind in 0..(this_v_left.len()-(goal_len-1)) {
-    //                 these_vs.push((&this_v_left[ind..ind+goal_len]).to_vec())
-    //             }
-    //             quadri_coords.append(&mut these_vs);
-    //         }
-    //         if this_v_right.len() >= goal_len {
-    //             let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-    //             for ind in 0..(this_v_right.len()-(goal_len-1)) {
-    //                 these_vs.push((&this_v_right[ind..ind+goal_len]).to_vec())
-    //             }
-    //             quadri_coords.append(&mut these_vs);
-    //         }
-    //     }
-    //     // Left side diagonals
-    //     // Right side diagnoals
-    //     for ix in 0..X_DIM {
-    //         let this_v_right =
-    //             (1..self.ydim)  //already handled x ==0
-    //             .filter_map(|k| {
-    //                 let x : usize = ix+k;
-    //                 let y : usize = 0+k;
-    //                 if x < X_DIM && y < Y_DIM { //x >= 0 && y >= 0 per usize
-    //                     return Some([ix+k, 0+k])
-    //                 } else {
-    //                     return None
-    //                 }
-    //             })
-    //             .collect::<Vec<[usize;2]>>();
-    //         let this_v_left =
-    //             (1..self.ydim)
-    //             .filter_map(|k| {
-    //                 let x : usize= ix + k;
-    //                 let y : i32 = self.ydim as i32 - 1 - k as i32;
-    //                 if x < X_DIM && y >= 0 && y < Y_DIM as i32 {  //x >= 0 per usize
-    //                     return Some([x, y as usize])
-    //                 } else {
-    //                     return None
-    //                 }
-    //             })
-    //             .collect::<Vec<[usize;2]>>();
-    //         if this_v_left.len() >= goal_len {
-    //             let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-    //             for ind in 0..(this_v_left.len()-(goal_len-1)) {
-    //                 these_vs.push((&this_v_left[ind..ind+goal_len]).to_vec())
-    //             }
-    //             quadri_coords.append(&mut these_vs);
-    //         }
-    //         if this_v_right.len() >= goal_len {
-    //             let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-    //             for ind in 0..(this_v_right.len()-(goal_len-1)) {
-    //                 these_vs.push((&this_v_right[ind..ind+goal_len]).to_vec())
-    //             }
-    //             quadri_coords.append(&mut these_vs);
-    //         }
-    //     }
+    pub fn get_horizontal(&self, len: usize) -> Vec::<Vec<[usize;2]>> {
+        QuadriEnumerator::get_horizontal_lines(len, self.x_dim, self.y_dim)
+    }
+    pub fn get_vertical(&self, len: usize) -> Vec::<Vec<[usize;2]>> {
+        // Get lines in transpose
+        let mut coords = QuadriEnumerator::get_horizontal_lines(len, self.y_dim, self.x_dim);
+        // Flip em back
+        QuadriEnumerator::transpose_coordinates(&mut coords);
+        coords
+    }
+    pub fn get_diagnoals(&self, len:usize) -> Vec::<Vec<[usize;2]>> {
+        let mut all_diags = QuadriEnumerator::get_full_right_diagonals(self.x_dim, self.y_dim);
+        all_diags.append(&mut QuadriEnumerator::get_full_left_diagonals(self.x_dim, self.y_dim));
 
+        QuadriEnumerator::sliding_windows_of_len(all_diags, len)
+    }
+
+    //TODO - get square cordners
     //     //squares
     //     let max_square_distance = if X_DIM < Y_DIM { X_DIM - 1 } else {Y_DIM - 1};
     //     for ix in 0..X_DIM {
@@ -201,7 +181,92 @@ mod test {
     }
 
     #[test]
-    fn horizontal() {
+    fn test_sliding_windows_of_len() {
+        let coord_sets = vec![
+            vec![[0,0],[1,1],[2,2],[3,3]]
+        ];
+        let expected = vec![
+            vec![[0,0],[1,1],[2,2]],
+            vec![[1,1],[2,2],[3,3]]
+        ];
+        let actual = QuadriEnumerator::sliding_windows_of_len(coord_sets, 3);
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_sliding_windows_of_len_empty() {
+        let coord_sets = vec![
+            vec![[0,0],[1,1],[2,2],[3,3]]
+        ];
+        let expected = vec![
+        ];
+        let actual = QuadriEnumerator::sliding_windows_of_len(coord_sets, 6);
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_sliding_windows_of_len_zero_len() {
+        let coord_sets = vec![
+            vec![[0,0],[1,1],[2,2],[3,3]]
+        ];
+        let expected = vec![
+        ];
+        let actual = QuadriEnumerator::sliding_windows_of_len(coord_sets, 0);
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_transpose_coordinates() {
+        let mut c: Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,1], [1,1], [2,1]],
+            vec![[0,0], [2,0], [1,0]]
+        ];
+        let expected: Vec<Vec<[usize; 2]>> =  vec![
+            vec![[1,0], [1,1], [1,2]],
+            vec![[0,0], [0,2], [0,1]]
+        ];
+        QuadriEnumerator::transpose_coordinates(&mut c);
+        assert_eq!(vec_as_hs(c), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_get_full_right_diagonals() {
+        let expected = vec![
+            vec![[0,1]],
+            vec![[0,0], [1,1]],
+            vec![[1,0]],
+        ];
+        let actual = QuadriEnumerator::get_full_right_diagonals(2, 2);
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_get_full_right_diagonals_empty() {
+        let expected = vec![        ];
+        let actual = QuadriEnumerator::get_full_right_diagonals(0, 3);
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_get_full_left_diagonals() {
+        let expected = vec![
+            vec![[0,0]],
+            vec![[0,1],[1,0]],
+            vec![[1,1]],
+        ];
+        let actual = QuadriEnumerator::get_full_left_diagonals(2, 2);
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_get_full_left_diagonals_empty() {
+        let expected = vec![        ];
+        let actual = QuadriEnumerator::get_full_left_diagonals(0, 3);
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_horizontal() {
         let q =  QuadriEnumerator::new(3,3);
         let horiz = q.get_horizontal(3);
         let expected : Vec<Vec<[usize; 2]>> = vec![
@@ -211,8 +276,9 @@ mod test {
         ];
         assert_eq!(vec_as_hs(horiz), vec_as_hs(expected))
     }
+
     #[test]
-    fn horizontal_short() {
+    fn test_horizontal_short() {
         let q =  QuadriEnumerator::new(3,3);
         let horiz = q.get_horizontal(2);
         let expected : Vec<Vec<[usize; 2]>> = vec![
@@ -226,7 +292,7 @@ mod test {
         assert_eq!(vec_as_hs(horiz), vec_as_hs(expected))
     }
     #[test]
-    fn horizontal_empty() {
+    fn test_horizontal_empty() {
         let expected:  Vec<Vec<[usize; 2]>> = Vec::new();
 
         let q =  QuadriEnumerator::new(3,3);
@@ -242,7 +308,7 @@ mod test {
         assert_eq!(vec_as_hs(horiz3), vec_as_hs(expected.clone()));
     }
     #[test]
-    fn horizontal_long() {
+    fn test_horizontal_long() {
         let expected:  Vec<Vec<[usize; 2]>> = Vec::new();
 
         let q =  QuadriEnumerator::new(3,3);
@@ -250,4 +316,92 @@ mod test {
         assert_eq!(vec_as_hs(horiz), vec_as_hs(expected));
     }
 
+    #[test]
+    fn test_horizontal_non_square_1() {
+        let q1 =  QuadriEnumerator::new(3,4);
+        let horiz1 = q1.get_horizontal(3);
+        let expected1 : Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [1,0], [2,0]],
+            vec![[0,1], [1,1], [2,1]],
+            vec![[0,2], [1,2], [2,2]],
+            vec![[0,3], [1,3], [2,3]],
+        ];
+        assert_eq!(vec_as_hs(horiz1), vec_as_hs(expected1));
+    }
+
+    #[test]
+    fn test_horizontal_non_square_2() {
+        let q2 =  QuadriEnumerator::new(4,3);
+        let horiz2 = q2.get_horizontal(3);
+        let expected2 : Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [1,0], [2,0]],
+            vec![[1,0], [2,0], [3,0]],
+            vec![[0,1], [1,1], [2,1]],
+            vec![[1,1], [2,1], [3,1]],
+            vec![[0,2], [1,2], [2,2]],
+            vec![[1,2], [2,2], [3,2]]
+        ];
+        assert_eq!(vec_as_hs(horiz2), vec_as_hs(expected2));
+    }
+
+    #[test]
+    fn test_vertical() {
+        let q =  QuadriEnumerator::new(3,3);
+        let verts = q.get_vertical(3);
+        let expected : Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [0,1], [0,2]],
+            vec![[1,0], [1,1], [1,2]],
+            vec![[2,0], [2,1], [2,2]]
+        ];
+        assert_eq!(vec_as_hs(verts), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_diagnoals() {
+        let q = QuadriEnumerator::new(3,3);
+        let diags = q.get_diagnoals(3);
+        let expected: Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [1,1], [2,2]],
+            vec![[0,2], [1,1], [2,0]]
+        ];
+        assert_eq!(vec_as_hs(diags), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_diagnoals_short() {
+        let q = QuadriEnumerator::new(3,3);
+        let diags = q.get_diagnoals(2);
+        let expected: Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [1,1]],
+            vec![[1,1], [2,2]],
+            vec![[0,2], [1,1]],
+            vec![[1,1], [2,0]],
+            vec![[1,0], [0,1]],
+            vec![[1,2], [2,1]],
+            vec![[0,1], [1,2]],
+            vec![[1,0], [2,1]]
+        ];
+        assert_eq!(vec_as_hs(diags), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_diagnoals_empty() {
+        let q = QuadriEnumerator::new(3,3);
+        let diags = q.get_diagnoals(0);
+        let expected: Vec<Vec<[usize; 2]>> = vec![];
+        assert_eq!(vec_as_hs(diags), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_diagnoals_rectangle() {
+        let q = QuadriEnumerator::new(2,3);
+        let diags = q.get_diagnoals(2);
+        let expected: Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [1,1]],
+            vec![[0,2], [1,1]],
+            vec![[1,0], [0,1]],
+            vec![[0,1], [1,2]],
+        ];
+        assert_eq!(vec_as_hs(diags), vec_as_hs(expected))
+    }
 }
