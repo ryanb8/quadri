@@ -152,3 +152,10 @@ impl Pieces {
         ixs.iter().map(|ix| self.get_piece_ref(*ix)).collect()
     }
 }
+
+#[cfg(test)]
+mod test {
+    // use super::*;
+
+    //TODO - write tests
+}

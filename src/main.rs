@@ -4,12 +4,16 @@ use std::error::Error;
 use std::io;
 use std::io::Write;
 
-mod gamepieces;
-mod utils;
-use gamepieces::GamePiece;
-use gamepieces::Pieces;
-mod gameboard;
-use gameboard::Gameboard;
+// mod gamepieces;
+// mod utils;
+// use gamepieces::GamePiece;
+// use gamepieces::Pieces;
+// mod gameboard;
+// use gameboard::Gameboard;
+
+use quadri::gameboard::Gameboard;
+use quadri::gamepieces::GamePiece;
+use quadri::gamepieces::Pieces;
 
 static BOARD_SEPARATOR: &'static str = "+---+---+---+---+";
 
@@ -83,12 +87,12 @@ struct Game {
 }
 
 impl Game {
-    fn new_sq(dim: usize) -> Game {
+    fn new() -> Game {
         Game {
             pieces: Pieces::new(),
-            board: Gameboard::new_sq(dim),
-            xdim: dim,
-            ydim: dim,
+            board: Gameboard::new(),
+            xdim: 4,
+            ydim: 4,
         }
     }
     fn get_unused_piece_ixs(&self) -> Vec<usize> {
@@ -315,7 +319,7 @@ fn check_for_all_quadris(game: &Game) -> (bool, Vec<Vec<[usize; 2]>>) {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut game = Game::new_sq(4);
+    let mut game = Game::new();
     loop {
         let available_pieces_map = &game.list_available_pieces_for_print_2();
         if available_pieces_map.len() > 0 {
