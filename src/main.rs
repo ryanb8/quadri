@@ -8,8 +8,8 @@ mod utils;
 mod gamepieces;
 use gamepieces::GamePiece;
 use gamepieces::Pieces;
-mod gameboard_generic;
-use gameboard_generic::Gameboard;
+mod gameboard;
+use gameboard::Gameboard;
 
 static BOARD_SEPARATOR: &'static str = "+---+---+---+---+";
 

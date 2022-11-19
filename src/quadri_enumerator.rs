@@ -15,9 +15,6 @@ impl QuadriEnumerator {
             y_dim: y_dim
         }
     }
-    fn check_if_empty(len: usize, x_dim: usize, y_dim: usize) -> bool {
-        len == 0 || x_dim == 0 || y_dim == 0
-    }
     fn transpose_coordinates(coords: &mut Vec::<Vec<[usize;2]>>) -> () {
         for v in coords {
             for c in v {
@@ -74,7 +71,7 @@ impl QuadriEnumerator {
         }
 
         // right side coords
-        let mut starting_coords =             (0..y_dim)
+        let mut starting_coords = (0..y_dim)
             .map(|y| [x_dim - 1 , y])
             .collect::<Vec<[usize;2]>>();
 
@@ -84,8 +81,6 @@ impl QuadriEnumerator {
             .map(|x| [x, 0])
             .collect::<Vec<[usize;2]>>()
         );
-
-        println!("{:?}", starting_coords);
 
         for c in starting_coords {
             let num_steps_available = min(c[0] + 1, y_dim - c[1]);
@@ -98,14 +93,14 @@ impl QuadriEnumerator {
         res
     }
 
-    fn sliding_windows_of_len(coord_sets: Vec::<Vec<[usize;2]>>, len: usize) -> Vec::<Vec<[usize;2]>> {
-        let mut res = Vec::<Vec<[usize;2]>>::new();
+    fn sliding_windows_of_len<T: std::clone::Clone>(coord_sets: Vec::<Vec<T>>, len: usize) -> Vec::<Vec<T>> {
+        let mut res = Vec::<Vec<T>>::new();
         if len == 0 {
             return res;
         }
         for v in coord_sets {
             if v.len() >= len {
-                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
+                let mut these_vs = Vec::<Vec<T>>::new();
                 for ind in 0..(v.len()-(len - 1)) {
                     these_vs.push((&v[ind..ind+len]).to_vec())
                 }
@@ -136,33 +131,32 @@ impl QuadriEnumerator {
         QuadriEnumerator::sliding_windows_of_len(all_diags, len)
     }
 
-    //TODO - get square cordners
-    //     //squares
-    //     let max_square_distance = if X_DIM < Y_DIM { X_DIM - 1 } else {Y_DIM - 1};
-    //     for ix in 0..X_DIM {
-    //         for jx in 0..Y_DIM {
-    //             let mut this_squares =
-    //                 (1..max_square_distance+1)
-    //                 .filter_map(|d| {
-    //                     if ix+d >= X_DIM || jx+d >= Y_DIM {
-    //                         return None
-    //                     }
-    //                     let this_square_a = [
-    //                         [ix,jx],
-    //                         [ix+d, jx],
-    //                         [ix, jx + d],
-    //                         [ix+d, jx + d]
-    //                     ];
-    //                     let this_square = this_square_a.to_vec();
-    //                     Some(this_square)
-    //                 })
-    //                 .collect::<Vec<Vec<[usize;2]>>>();
-    //                 quadri_coords.append(&mut this_squares);
-    //         }
-    //     }
-    //     self.quadri_coords = quadri_coords;
-    // }
+    pub fn get_square_corners(&self) -> Vec::<Vec<[usize;2]>> {
+        let mut res = Vec::<Vec<[usize;2]>>::new();
+        if self.x_dim <= 1 || self.y_dim <= 1 {
+            return res;
+        }
 
+        // iterate through all top left coordinates of squares
+        for ix in 0..(self.x_dim - 1) {
+            for jx in 0..(self.y_dim - 1) {
+                let max_square_distance = min(self.x_dim - ix, self.y_dim - jx);
+                let mut these_squares =
+                    (1..max_square_distance)
+                    .map(|d| {
+                        [
+                            [ix,jx],
+                            [ix+d, jx],
+                            [ix, jx + d],
+                            [ix+d, jx + d]
+                        ].to_vec()
+                    })
+                    .collect::<Vec<Vec<[usize;2]>>>();
+                res.append(&mut these_squares);
+            }
+        }
+        res
+    }
 }
 
 #[cfg(test)]
@@ -403,5 +397,38 @@ mod test {
             vec![[0,1], [1,2]],
         ];
         assert_eq!(vec_as_hs(diags), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_square_corners() {
+        let q = QuadriEnumerator::new(3,3);
+        let actual = q.get_square_corners();
+        let expected: Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [0,1], [1,0], [1,1]],
+            vec![[1,0], [1,1], [2,0], [2,1]],
+            vec![[0,1], [0,2], [1,1], [1,2]],
+            vec![[1,1], [1,2], [2,1], [2,2]],
+            vec![[0,0], [2,0], [0,2], [2,2]],
+        ];
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_square_corners_rec() {
+        let q = QuadriEnumerator::new(2,3);
+        let actual = q.get_square_corners();
+        let expected: Vec<Vec<[usize; 2]>> = vec![
+            vec![[0,0], [0,1], [1,0], [1,1]],
+            vec![[0,1], [0,2], [1,1], [1,2]]
+        ];
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
+    }
+
+    #[test]
+    fn test_square_empty() {
+        let q = QuadriEnumerator::new(1,3);
+        let actual = q.get_square_corners();
+        let expected: Vec<Vec<[usize; 2]>> = vec![];
+        assert_eq!(vec_as_hs(actual), vec_as_hs(expected))
     }
 }

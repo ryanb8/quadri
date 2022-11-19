@@ -31,173 +31,35 @@ impl Gameboard {
         [x, y]
     }
 
-    fn get_quadri_coords(&mut self) -> () {
-        // 0 indexed for both x and y
-        let mut quadri_coords = Vec::<Vec<[usize;2]>>::new();
-        let goal_len : usize  = 4;
-        //vertical
-        for ix in 0..X_DIM {
-            let this_v =
-                (0..self.ydim)
-                .map(|y| [ix, y])
-                .collect::<Vec<[usize;2]>>();
-            if this_v.len() >= goal_len {
-                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-                for ind in 0..(this_v.len()-(goal_len-1)) {
-                    these_vs.push((&this_v[ind..ind+goal_len]).to_vec())
-                }
-                quadri_coords.append(&mut these_vs);
-            }
-        }
-        //horizontal
-        for jx in 0..Y_DIM {
-            let this_v =
-                (0..X_DIM)
-                .map(|x| [x, jx])
-                .collect::<Vec<[usize;2]>>();
-            if this_v.len() >= goal_len {
-                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-                for ind in 0..(this_v.len()-(goal_len - 1)) {
-                    these_vs.push((&this_v[ind..ind+goal_len]).to_vec())
-                }
-                quadri_coords.append(&mut these_vs);
-            }
-        }
-        //diagonals
-        //top-line diagonals
-        for jx in 0..self.ydim {
-            let this_v_right =
-                (0..X_DIM)
-                .filter_map(|k| {
-                    let x : usize = k;
-                    let y : usize = jx+k;
-                    if x < X_DIM && y < Y_DIM { //x >= 0 &&  \y >= 0 per usize
-                        return Some([x, y as usize])
-                    } else {
-                        return None
-                    }
-                })
-                .collect::<Vec<[usize;2]>>();
-            let this_v_left =
-                (0..X_DIM)
-                .filter_map(|k| {
-                    let x : usize = k;
-                    let y : i32 = jx as i32 - k as i32;
-                    if x < X_DIM && y >= 0 && y < Y_DIM as i32 { //x >= 0 per usize
-                        return Some([x, y as usize])
-                    } else {
-                        return None
-                    }
-                })
-                .collect::<Vec<[usize;2]>>();
-            if this_v_left.len() >= goal_len {
-                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-                for ind in 0..(this_v_left.len()-(goal_len-1)) {
-                    these_vs.push((&this_v_left[ind..ind+goal_len]).to_vec())
-                }
-                quadri_coords.append(&mut these_vs);
-            }
-            if this_v_right.len() >= goal_len {
-                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-                for ind in 0..(this_v_right.len()-(goal_len-1)) {
-                    these_vs.push((&this_v_right[ind..ind+goal_len]).to_vec())
-                }
-                quadri_coords.append(&mut these_vs);
-            }
-        }
-        // Left side diagonals
-        // Right side diagnoals
-        for ix in 0..X_DIM {
-            let this_v_right =
-                (1..self.ydim)  //already handled x ==0
-                .filter_map(|k| {
-                    let x : usize = ix+k;
-                    let y : usize = 0+k;
-                    if x < X_DIM && y < Y_DIM { //x >= 0 && y >= 0 per usize
-                        return Some([ix+k, 0+k])
-                    } else {
-                        return None
-                    }
-                })
-                .collect::<Vec<[usize;2]>>();
-            let this_v_left =
-                (1..self.ydim)
-                .filter_map(|k| {
-                    let x : usize= ix + k;
-                    let y : i32 = self.ydim as i32 - 1 - k as i32;
-                    if x < X_DIM && y >= 0 && y < Y_DIM as i32 {  //x >= 0 per usize
-                        return Some([x, y as usize])
-                    } else {
-                        return None
-                    }
-                })
-                .collect::<Vec<[usize;2]>>();
-            if this_v_left.len() >= goal_len {
-                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-                for ind in 0..(this_v_left.len()-(goal_len-1)) {
-                    these_vs.push((&this_v_left[ind..ind+goal_len]).to_vec())
-                }
-                quadri_coords.append(&mut these_vs);
-            }
-            if this_v_right.len() >= goal_len {
-                let mut these_vs = Vec::<Vec<[usize;2]>>::new();
-                for ind in 0..(this_v_right.len()-(goal_len-1)) {
-                    these_vs.push((&this_v_right[ind..ind+goal_len]).to_vec())
-                }
-                quadri_coords.append(&mut these_vs);
-            }
-        }
-
-        //squares
-        let max_square_distance = if X_DIM < Y_DIM { X_DIM - 1 } else {Y_DIM - 1};
-        for ix in 0..X_DIM {
-            for jx in 0..Y_DIM {
-                let mut this_squares =
-                    (1..max_square_distance+1)
-                    .filter_map(|d| {
-                        if ix+d >= X_DIM || jx+d >= Y_DIM {
-                            return None
-                        }
-                        let this_square_a = [
-                            [ix,jx],
-                            [ix+d, jx],
-                            [ix, jx + d],
-                            [ix+d, jx + d]
-                        ];
-                        let this_square = this_square_a.to_vec();
-                        Some(this_square)
-                    })
-                    .collect::<Vec<Vec<[usize;2]>>>();
-                    quadri_coords.append(&mut this_squares);
-            }
-        }
-        self.quadri_coords = quadri_coords;
+    fn get_quadri_coords() -> Vec::<Vec<[usize;2]>> {
+        let qe = QuadriEnumerator::new(X_DIM, Y_DIM);
+        let mut coord_sets = qe.get_horizontal(4);
+        coord_sets.append(&mut qe.get_vertical(4));
+        coord_sets.append(&mut qe.get_diagnoals(4));
+        coord_sets.append(&mut qe.get_square_corners());
+        coord_sets
     }
-    fn new(dim_x: usize, dim_y: usize) -> Gameboard {
+    fn new() -> Gameboard {
         let mut this_board = Vec::<Option<usize>>::new();
         let mut empty_spaces = HashSet::new();
         let mut ix_as_alpha = Vec::<String>::new();
-        for ix in 0..dim_x as usize {
-            for jx in 0..dim_y as usize {
+        for ix in 0..X_DIM as usize {
+            for jx in 0..Y_DIM as usize {
                 this_board.push(None);
                 empty_spaces.insert([ix, jx]);
                 let this_alpha = utils::num_to_alpha((ix*dim_y) + jx + 1).unwrap();
                 ix_as_alpha.push(this_alpha);
             }
         }
-        let mut g = Gameboard {
+        let mut quadri_coords = Gameboard::get_quadri_coords();
+        Gameboard {
             board: this_board,
             ix_as_alpha: ix_as_alpha,
             active_ixs: HashSet::new(),
             empty_spaces: empty_spaces,
             used_spaces: HashSet::new(),
-            quadri_coords: Vec::<Vec<[usize;2]>>::new(),
+            quadri_coords: quadri_coords,
         };
-        g.get_quadri_coords();
-        g
-    }
-    fn new_sq(dim: usize) -> Gameboard {
-        Gameboard::new(dim, dim)
     }
     fn has_valid_indicies(&self, x: usize, y: usize) -> bool {
         let mut result = true;
