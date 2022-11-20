@@ -128,6 +128,8 @@ impl GamePiece {
     }
 }
 
+//TODO - I feel like a struct with one field is silly, but I can't make `get_piece_ref` work with
+// pub struct Pieces(Vec<GamePiece>)
 pub struct Pieces {
     pub pieces: Vec<GamePiece>,
 }
