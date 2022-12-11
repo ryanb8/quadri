@@ -1,77 +1,77 @@
 use std::error::Error;
 
-use quadri::game::check_for_all_quadris;
-use quadri::game::Game;
+// use quadri::game::check_for_all_quadris;
+// use quadri::game::Game;
 
-// struct PieceValue2 (i8);
+// // struct PieceValue2 (i8);
 
-// impl PieceValue2 {
-//     fn value(&self) -> i8 {
-//         self.0
-//     }
-// }
+// // impl PieceValue2 {
+// //     fn value(&self) -> i8 {
+// //         self.0
+// //     }
+// // }
 
-// enum PieceValues {
-//     One,
-//     Two,
-//     Three,
-//     Four,
-// }
+// // enum PieceValues {
+// //     One,
+// //     Two,
+// //     Three,
+// //     Four,
+// // }
 
-// impl PieceValues {
-//     fn value(&self) -> i8 {
-//         match &self {
-//             PieceValues::One => 1 as i8,
-//             PieceValues::Two => 2 as i8,
-//             PieceValues::Three => 3 as i8,
-//             PieceValues::Four => 4 as i8,
-//         }
-//     }
-// }
+// // impl PieceValues {
+// //     fn value(&self) -> i8 {
+// //         match &self {
+// //             PieceValues::One => 1 as i8,
+// //             PieceValues::Two => 2 as i8,
+// //             PieceValues::Three => 3 as i8,
+// //             PieceValues::Four => 4 as i8,
+// //         }
+// //     }
+// // }
 
-// fn print_type_of<T>(_: &T) {
-//     println!("{}", std::any::type_name::<T>())
-// }
+// // fn print_type_of<T>(_: &T) {
+// //     println!("{}", std::any::type_name::<T>())
+// // }
 
-// TODO: Handle errors intelligently, none of this String mess
-// TODO: Tests
-// TODO: Split code into multiple files
+// // TODO: Handle errors intelligently, none of this String mess
+// // TODO: Tests
+// // TODO: Split code into multiple files
 
-// -- red/blue | capital/lowercase | X/O | underli
-// x_ x- X_ X-   <- red
-// x_ x- X_ X-   <- blue
-// o_ o- O_ O-   <- red
-// o_ o- O_ O-   <- blue
+// // -- red/blue | capital/lowercase | X/O | underli
+// // x_ x- X_ X-   <- red
+// // x_ x- X_ X-   <- blue
+// // o_ o- O_ O-   <- red
+// // o_ o- O_ O-   <- blue
 
-// -- red/blue | capital/lowercase | X/O | underline/bold
-// +----+----+----+----+
-// | x_ | x- | X_ | X- |  <- red
-// +----+----+----+----+
-// | x_ | x- | X_ | X- |  <- blue
-// +----+----+----+----+
-// | o_ | o- | O_ | O- |  <- red
-// +----+----+----+----+
-// | o_ | o- | O_ | O- |  <- blue
-// +----+----+----+----+
+// // -- red/blue | capital/lowercase | X/O | underline/bold
+// // +----+----+----+----+
+// // | x_ | x- | X_ | X- |  <- red
+// // +----+----+----+----+
+// // | x_ | x- | X_ | X- |  <- blue
+// // +----+----+----+----+
+// // | o_ | o- | O_ | O- |  <- red
+// // +----+----+----+----+
+// // | o_ | o- | O_ | O- |  <- blue
+// // +----+----+----+----+
 
-/// yell  grey  yell  grey
-// +---+---+---+---+
-// | ○ | ○ | ● | ● |  <- red
-// +---+---+---+---+
-// | ○ | ○ | ● | ● |  <- blue
-// +---+---+---+---+
-// | ▯ | ▯ | ▮ | ▮ |  <- red
-// +---+---+---+---+
-// | ▯ | ▯ | ▮ | ▮ |  <- blue
-// +---+---+---+---+
+// /// yell  grey  yell  grey
+// // +---+---+---+---+
+// // | ○ | ○ | ● | ● |  <- red
+// // +---+---+---+---+
+// // | ○ | ○ | ● | ● |  <- blue
+// // +---+---+---+---+
+// // | ▯ | ▯ | ▮ | ▮ |  <- red
+// // +---+---+---+---+
+// // | ▯ | ▯ | ▮ | ▮ |  <- blue
+// // +---+---+---+---+
 
-//TODO - move game to standlone module
-//TODO -  Clean up main and make it better
-// TODO - Extract out CLI components (print statements, etc) - make it a CLI frontend
-// TODO - Svelte based actual front end?
+// //TODO - move game to standlone module
+// //TODO -  Clean up main and make it better
+// // TODO - Extract out CLI components (print statements, etc) - make it a CLI frontend
+// // TODO - Svelte based actual front end?
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut game = Game::new();
+    let mut game = Game::start_game();
     loop {
         let available_pieces_map = &game.list_available_pieces_for_print_2();
         if available_pieces_map.len() > 0 {
@@ -129,5 +129,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             break;
         }
     }
+    Ok(())
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    println! {"hey world"};
     Ok(())
 }

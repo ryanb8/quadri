@@ -130,30 +130,30 @@ impl GamePiece {
 
 //TODO - I feel like a struct with one field is silly, but I can't make `get_piece_ref` work with
 // pub struct Pieces(Vec<GamePiece>)
-pub struct Pieces {
-    pub pieces: Vec<GamePiece>,
-}
+// pub struct Pieces {
+//     pub pieces: Vec<GamePiece>,
+// }
 
-impl Pieces {
-    pub fn new() -> Pieces {
-        let num_pieces: usize = 4 * 4;
-        let pieces: Vec<GamePiece> = (0..num_pieces)
-            .map(|ix| utils::convert_to_binary(ix))
-            .map(|v| utils::left_pad(v, 4))
-            .map(|v| GamePiece::new_from_vec(v))
-            .collect::<Result<Vec<GamePiece>, String>>()
-            .unwrap();
+// impl Pieces {
+//     pub fn new() -> Pieces {
+//         let num_pieces: usize = 4 * 4;
+//         let pieces: Vec<GamePiece> = (0..num_pieces)
+//             .map(|ix| utils::convert_to_binary(ix))
+//             .map(|v| utils::left_pad(v, 4))
+//             .map(|v| GamePiece::new_from_vec(v))
+//             .collect::<Result<Vec<GamePiece>, String>>()
+//             .unwrap();
 
-        Pieces { pieces: pieces }
-    }
-    pub fn get_piece_ref(&self, ix: usize) -> &GamePiece {
-        //TODO: ensure ix is in correct range
-        &self.pieces[ix]
-    }
-    pub fn get_pieces_refs(&self, ixs: Vec<usize>) -> Vec<&GamePiece> {
-        ixs.iter().map(|ix| self.get_piece_ref(*ix)).collect()
-    }
-}
+//         Pieces { pieces: pieces }
+//     }
+//     pub fn get_piece_ref(&self, ix: usize) -> &GamePiece {
+//         //TODO: ensure ix is in correct range
+//         &self.pieces[ix]
+//     }
+//     pub fn get_pieces_refs(&self, ixs: Vec<usize>) -> Vec<&GamePiece> {
+//         ixs.iter().map(|ix| self.get_piece_ref(*ix)).collect()
+//     }
+// }
 
 #[cfg(test)]
 mod test {
