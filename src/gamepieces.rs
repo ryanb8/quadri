@@ -1,12 +1,6 @@
-use colored::ColoredString;
-use colored::Colorize;
 use std::hash::{Hash, Hasher};
 
-use crate::utils;
-
 static ALLOWED_ATTRIBUTE_VALUES: [i8; 2] = [0, 1];
-static RGB_WHITE: (u8, u8, u8) = (255, 255, 255);
-static RGB_GREY: (u8, u8, u8) = (255, 204, 0);
 
 #[derive(Debug)]
 struct AV(i8); //allowed values
@@ -25,10 +19,8 @@ impl AV {
 
 #[derive(Debug, Clone)]
 pub struct GamePiece {
-    pub name: String,
+    pub sig: String,
     pub ats: Vec<i8>,
-    pub dim: i8,
-    pub print: ColoredString,
 }
 
 impl PartialEq for GamePiece {
@@ -39,9 +31,8 @@ impl PartialEq for GamePiece {
 impl Eq for GamePiece {}
 impl Hash for GamePiece {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
+        self.sig.hash(state);
         self.ats.hash(state);
-        self.dim.hash(state);
     }
 }
 
@@ -59,105 +50,55 @@ impl GamePiece {
                 ));
             }
         }
-        let name = GamePiece::get_piece_name(&values);
-        let print = GamePiece::get_piece_print(&values);
+        let name = values
+            .iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
         Ok(GamePiece {
-            name: name,
+            sig: name,
             ats: values,
-            dim: dim,
-            print: print,
         })
-    }
-    fn get_piece_name(validated_values: &Vec<i8>) -> String {
-        let mut res = String::new();
-        //2
-        if validated_values[1] == 0 {
-            res.push_str("red_");
-        } else {
-            res.push_str("blue_");
-        }
-        //3
-        if validated_values[2] == 0 {
-            res.push_str("empty_");
-        } else {
-            res.push_str("full_");
-        }
-        //4
-        if validated_values[3] == 0 {
-            res.push_str("rec_");
-        } else {
-            res.push_str("circle_");
-        }
-        //1
-        if validated_values[0] == 0 {
-            res.push_str("onWhite");
-        } else {
-            res.push_str("onGrey");
-        }
-        res
-    }
-    fn get_piece_print(validated_values: &Vec<i8>) -> ColoredString {
-        let res = {
-            if (validated_values[3], validated_values[2]) == (0, 0) {
-                "▯".to_string()
-            } else if (validated_values[3], validated_values[2]) == (0, 1) {
-                "▮".to_string()
-            } else if (validated_values[3], validated_values[2]) == (1, 0) {
-                "○".to_string()
-            } else {
-                "●".to_string()
-            }
-        };
-
-        let mut res_c = {
-            if validated_values[1] == 0 {
-                res.red().bold()
-            } else {
-                res.blue().bold()
-            }
-        };
-
-        res_c = {
-            if validated_values[0] == 0 {
-                res_c.on_truecolor(RGB_WHITE.0, RGB_WHITE.1, RGB_WHITE.2)
-            } else {
-                res_c.on_truecolor(RGB_GREY.0, RGB_GREY.1, RGB_GREY.2)
-            }
-        };
-        res_c
     }
 }
 
-//TODO - I feel like a struct with one field is silly, but I can't make `get_piece_ref` work with
-// pub struct Pieces(Vec<GamePiece>)
-// pub struct Pieces {
-//     pub pieces: Vec<GamePiece>,
-// }
-
-// impl Pieces {
-//     pub fn new() -> Pieces {
-//         let num_pieces: usize = 4 * 4;
-//         let pieces: Vec<GamePiece> = (0..num_pieces)
-//             .map(|ix| utils::convert_to_binary(ix))
-//             .map(|v| utils::left_pad(v, 4))
-//             .map(|v| GamePiece::new_from_vec(v))
-//             .collect::<Result<Vec<GamePiece>, String>>()
-//             .unwrap();
-
-//         Pieces { pieces: pieces }
-//     }
-//     pub fn get_piece_ref(&self, ix: usize) -> &GamePiece {
-//         //TODO: ensure ix is in correct range
-//         &self.pieces[ix]
-//     }
-//     pub fn get_pieces_refs(&self, ixs: Vec<usize>) -> Vec<&GamePiece> {
-//         ixs.iter().map(|ix| self.get_piece_ref(*ix)).collect()
-//     }
-// }
-
 #[cfg(test)]
 mod test {
-    // use super::*;
+    use super::*;
 
-    //TODO - write tests
+    #[test]
+    fn test_new_from_vec_standard() -> Result<(), String> {
+        let input_vec = vec![1 as i8, 0 as i8, 1 as i8, 0 as i8];
+        let expected = GamePiece {
+            sig: "1010".to_string(),
+            ats: input_vec.clone(),
+        };
+        let actual = GamePiece::new_from_vec(input_vec)?;
+        assert_eq!(expected, actual);
+        Ok(())
+    }
+
+    #[test]
+    fn test_num_to_alpha_len_errors() {
+        let short_vec = vec![0 as i8, 1 as i8];
+        let long_vec = vec![0 as i8, 1 as i8, 0 as i8, 0 as i8, 0 as i8];
+        assert!(
+            GamePiece::new_from_vec(short_vec).is_err(),
+            "Shorter than 4 should return error"
+        );
+        assert!(
+            GamePiece::new_from_vec(long_vec).is_err(),
+            "Longer than 4 should return error"
+        );
+    }
+
+    #[test]
+    fn test_num_to_alpha_value_errors() {
+        let bad_vec = vec![2 as i8, 1 as i8, 0 as i8, 1 as i8];
+        assert!(
+            GamePiece::new_from_vec(bad_vec).is_err(),
+            "Should only support 0 and 1"
+        );
+    }
 }
