@@ -102,27 +102,29 @@ impl GameboardAndPieces {
 
     // Actions
     //TODO - write Test
-    pub fn place_piece(&mut self, piece_index: usize, x: usize, y: usize) -> Result<usize, String> {
-        println!("DEBUG: piece_index: {}, x: {}, y: {}", piece_index, x, y);
+    pub fn place_piece(&mut self, piece_index: usize, board_index: usize) -> Result<usize, String> {
+        println!(
+            "DEBUG: piece_index: {}, board_index: {}",
+            piece_index, board_index
+        );
         if self.piece_is_placed(&piece_index) {
             return Err("This piece already on board".to_string());
         }
-        if self.space_is_full(x, y) {
+        if self.space_is_full(board_index) {
             return Err("This space already occupied".to_string());
         }
-        let board_ix = self.coord_to_ix(&x, &y);
-        self.board[board_ix] = Some(piece_index);
+        self.board[board_index] = Some(piece_index);
         self.bank[piece_index] = None;
         Ok(piece_index)
     }
+
     //unused but retain for now.
     //TODO - write Test
-    pub fn remove_piece(&mut self, x: usize, y: usize) -> Result<usize, String> {
+    pub fn remove_piece(&mut self, board_index: usize) -> Result<usize, String> {
         let current_piece_index = self
-            .get_piece_ix_at_coord(x, y)?
+            .get_piece_ix_at_board_ix(board_index)?
             .ok_or("Square is already piece-less".to_string())?;
-        let board_ix = self.coord_to_ix(&x, &y);
-        self.board[board_ix] = None;
+        self.board[board_index] = None;
         self.bank[current_piece_index] = Some(current_piece_index);
         Ok(current_piece_index)
     }
@@ -224,18 +226,25 @@ impl GameboardAndPieces {
 
     // State getters by reference
     //TODO - write Test
-    fn get_piece_ix_at_coord(&self, x: usize, y: usize) -> Result<Option<usize>, String> {
-        if !&self.has_valid_indicies(x, y) {
-            return Err("Piece index out of bounds".to_string());
+    fn get_piece_ix_at_board_ix(&self, board_index: usize) -> Result<Option<usize>, String> {
+        if !&self.is_valid_board_index(board_index) {
+            return Err("Board index out of bounds".to_string());
         }
-        Ok(self.board[self.coord_to_ix(&x, &y)])
+        Ok(self.board[board_index])
+    }
+    fn get_piece_ix_at_coord(&self, x: usize, y: usize) -> Result<Option<usize>, String> {
+        let board_index = self.coord_to_ix(&x, &y);
+        self.get_piece_ix_at_board_ix(board_index)
     }
     //TODO - write Test
-    fn get_piece_at_coord(&self, x: usize, y: usize) -> Result<Option<&GamePiece>, String> {
-        match self.get_piece_ix_at_coord(x, y)? {
+    fn get_piece_at_index(&self, board_index: usize) -> Result<Option<&GamePiece>, String> {
+        match self.board[board_index] {
             Some(piece_ix) => Ok(Some(&self.pieces[piece_ix])),
             none => Ok(None),
         }
+    }
+    fn get_piece_at_coord(&self, x: usize, y: usize) -> Result<Option<&GamePiece>, String> {
+        self.get_piece_at_index(self.coord_to_ix(&x, &y))
     }
     //TODO - write Test
     fn get_pieces_at_coords(
@@ -287,13 +296,11 @@ impl GameboardAndPieces {
         [x, y]
     }
     //TODO - write Test
-    fn has_valid_indicies(&self, x: usize, y: usize) -> bool {
-        let mut result = true;
-        // 0 indexed - usize enforces < 0
-        if x >= X_DIM || y >= Y_DIM {
-            result = false;
-        }
-        result
+    fn has_valid_coord(&self, x: usize, y: usize) -> bool {
+        self.is_valid_board_index(self.coord_to_ix(&x, &y))
+    }
+    fn is_valid_board_index(&self, board_index: usize) -> bool {
+        board_index >= 0 && board_index < X_DIM * Y_DIM
     }
     //TODO - write Test
     fn piece_is_placed(&self, piece_ix: &usize) -> bool {
@@ -303,8 +310,14 @@ impl GameboardAndPieces {
         }
     }
     //TODO - write Test
-    fn space_is_full(&self, x: usize, y: usize) -> bool {
+    fn space_is_full_by_coord(&self, x: usize, y: usize) -> bool {
         match self.board[self.coord_to_ix(&x, &y)] {
+            Some(piece_ix) => true,
+            None => false,
+        }
+    }
+    fn space_is_full(&self, board_ix: usize) -> bool {
+        match self.board[board_ix] {
             Some(piece_ix) => true,
             None => false,
         }

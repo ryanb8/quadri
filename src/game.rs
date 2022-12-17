@@ -1,8 +1,11 @@
 static PHASE_PICK: &'static str = "pick_piece_for_opponent";
 static PHASE_PLACE: &'static str = "place_piece_on_board";
 
+use crate::gameboard::BoardState;
+use crate::gameboard::PieceState;
 use crate::quadri_io_representation_cli::QuadriIORepresentationCLI;
 use crate::{gameboard::GameboardAndPieces, quadri_io_representation::QuadriIORepresentation};
+use std::error::Error;
 
 #[derive(Debug, Clone)]
 pub struct TurnState {
@@ -12,6 +15,7 @@ pub struct TurnState {
 }
 #[derive(Debug, Clone)]
 pub struct WinnerState {
+    complete: bool,
     winner: Option<usize>,
     winning_quadris: Option<Vec<Vec<[usize; 2]>>>,
 }
@@ -32,6 +36,12 @@ pub struct Game<T: QuadriIORepresentation> {
 // // - any winners
 // // pick piece for opponent
 // // place piece on board - option to return winners or not
+
+impl WinnerState {
+    fn is_complete(&self) -> bool {
+        self.complete
+    }
+}
 
 impl TurnState {
     pub fn setup() -> TurnState {
@@ -62,7 +72,7 @@ impl TurnState {
     }
 }
 
-impl<T: QuadriIORepresentation> Game<T> {
+impl Game<QuadriIORepresentationCLI> {
     pub fn new_cli_game() -> Game<QuadriIORepresentationCLI> {
         let gb = GameboardAndPieces::new();
         let piece_states = gb.get_piece_states();
@@ -74,101 +84,57 @@ impl<T: QuadriIORepresentation> Game<T> {
             representation_io: repr,
         }
     }
+}
 
-    //     // Setup
-    //     pub fn start_game() -> Game {
-    //         Game {
-    //             // pieces: Game::create_pieces(),
-    //             board_and_pieces: GameboardAndPieces::new(),
-    //             turn_state: TurnState::setup(),
-    //         }
-    //     }
+impl<T: QuadriIORepresentation> Game<T> {
+    pub fn play_game(&mut self) -> Result<(), Box<dyn Error>> {
+        loop {
+            let piece_ix = self
+                .representation_io
+                .pick_piece_for_opponent(self.get_board_states(), self.get_piece_states());
+            let board_ix = self
+                .representation_io
+                .pick_place_for_piece(self.get_board_states(), piece_ix);
+            self.place_piece(piece_ix, board_ix);
+            let ws = self.get_winner_state();
+            if ws.is_complete() {
+                println!("Game is done! Winner!");
+                break;
+                //TODO - alert winner
+            }
+            self.turn_state.increment_turn_and_phase();
+        }
+        Ok(())
+    }
 
-    //     pub fn get_game_state(&self) -> GameState {
-    //         GameState {
-    //             piece_states: self.board_and_pieces.get_piece_states(),
-    //             turn_state: self.get_turn_and_actor(),
-    //             winner_state: self.get_winners(),
-    //         }
-    //     }
+    fn get_piece_states(&self) -> Vec<PieceState> {
+        self.board_and_pieces.get_piece_states()
+    }
 
-    //     pub fn get_turn_and_actor(&self) -> TurnState {
-    //         self.turn_state.clone()
-    //     }
+    fn get_board_states(&self) -> Vec<BoardState> {
+        self.board_and_pieces.get_board_states()
+    }
 
-    //TODO actually implement this.
-    pub fn get_winners(&self) -> WinnerState {
-        WinnerState {
-            winner: None,
-            winning_quadris: None,
+    fn place_piece(&mut self, piece_ix: usize, board_ix: usize) -> Result<usize, String> {
+        self.board_and_pieces.place_piece(piece_ix, board_ix)
+    }
+
+    fn check_for_quadris(&self) -> (bool, Vec<Vec<[usize; 2]>>) {
+        self.board_and_pieces.check_all_quadris()
+    }
+    fn get_winner_state(&self) -> WinnerState {
+        let (are_quadris, quadri_coords) = self.check_for_quadris();
+        match are_quadris {
+            true => WinnerState {
+                complete: true,
+                winner: None,
+                winning_quadris: Some(quadri_coords),
+            },
+            false => WinnerState {
+                complete: false,
+                winner: None,
+                winning_quadris: None,
+            },
         }
     }
 }
-
-// impl GamePlayCLI {
-//     /*
-//     pub fn play_game() -> () {
-//         let mut game = Game::start_game();
-//         loop {
-//             let available_pieces_map = &game.list_available_pieces_for_print_2();
-//             if available_pieces_map.len() > 0 {
-//                 let mut available_pieces_v: Vec<(&usize, &String, String)> = available_pieces_map
-//                     .into_iter()
-//                     .map(|(ix, s)| (ix, s, format!("{}\t{}", ix, s)))
-//                     .collect();
-//                 available_pieces_v.sort_by_key(|k| k.0);
-//                 let available_pieces = available_pieces_v
-//                     .iter()
-//                     .map(|(_ix, _s, ixs)| ixs.clone())
-//                     .collect();
-//                 println!("Pick a piece for your opponent to place");
-//                 let print_str = &game.choose_a_piece(&available_pieces);
-//                 println!("{}", print_str);
-//                 let choosen_piece_ix = &game.read_choosen_piece2(&available_pieces_map);
-//                 println!(
-//                     "Opponent must place piece {}",
-//                     &available_pieces_map
-//                         .get(choosen_piece_ix)
-//                         .ok_or("I screwed up!")?
-//                 );
-
-//                 let mut labels = Vec::new();
-//                 let mut empty_labels = Vec::<Option<String>>::new();
-//                 for s in &game.board.ix_as_alpha {
-//                     labels.push(Some(s.to_string()));
-//                     empty_labels.push(None);
-//                 }
-//                 let pieces = &game.pieces_by_position();
-
-//                 println!(
-//                     "Pick a place for piece {}",
-//                     &available_pieces_map
-//                         .get(choosen_piece_ix)
-//                         .ok_or("I screwed up!")?
-//                 );
-//                 println!("{}", &game.game_board_string2(pieces.to_vec(), labels)?);
-
-//                 let _ix = &mut game.place_piece_on_choosen_space(*choosen_piece_ix)?;
-//                 let pieces = &game.pieces_by_position();
-//                 println!("Current Board:");
-//                 println!(
-//                     "{}",
-//                     &game.game_board_string2(pieces.to_vec(), empty_labels)?
-//                 );
-//                 //TODO - this should be inside the game struct
-//                 let (are_quadris, _coords) = check_for_all_quadris(&game);
-//                 if are_quadris {
-//                     println!("Game is done! Winner!");
-//                     break;
-//                 }
-//             } else {
-//                 println! {"Draw!"};
-//                 break;
-//             }
-//         }
-//     }
-//     */
-//     // fn list_available_pieces(&self) -> () {
-//     //     self.0.
-//     // }
-// }

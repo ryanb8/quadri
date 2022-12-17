@@ -1,5 +1,7 @@
 use std::error::Error;
 
+use quadri::game::Game;
+
 // use quadri::game::check_for_all_quadris;
 // use quadri::game::Game;
 
@@ -66,6 +68,6 @@ use std::error::Error;
 // // +---+---+---+---+
 
 fn main() -> Result<(), Box<dyn Error>> {
-    println! {"hey world"};
-    Ok(())
+    let mut game = Game::new_cli_game();
+    game.play_game()
 }
