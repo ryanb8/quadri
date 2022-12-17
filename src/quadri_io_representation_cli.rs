@@ -17,7 +17,7 @@ static EMPTY_SPACE: &'static str = " ";
 static RGB_WHITE: (u8, u8, u8) = (255, 255, 255);
 static RGB_GREY: (u8, u8, u8) = (255, 204, 0);
 
-pub struct CLIQuadriIORepresentation {
+pub struct QuadriIORepresentationCLI {
     cli_pieces: Vec<CLIGamePiece>,
     board_letters: Vec<String>,
 }
@@ -27,13 +27,13 @@ struct CLIGamePiece {
     print: ColoredString,
 }
 
-impl CLIQuadriIORepresentation {
-    pub fn new(all_pieces: Vec<PieceState>) -> CLIQuadriIORepresentation {
+impl QuadriIORepresentationCLI {
+    pub fn new(all_pieces: Vec<PieceState>) -> QuadriIORepresentationCLI {
         let cli_pieces = all_pieces
             .iter()
             .map(|ps| CLIGamePiece {
                 ix: ps.piece_ix,
-                print: CLIQuadriIORepresentation::get_piece_print(&ps.piece.ats),
+                print: QuadriIORepresentationCLI::get_piece_print(&ps.piece.ats),
             })
             .collect();
         let board_letters_result = (1..17).map(|x| utils::num_to_alpha(x)).collect();
@@ -41,7 +41,7 @@ impl CLIQuadriIORepresentation {
             Ok(letters) => letters,
             Err(error) => panic!("Problem mapping numbers to letters: {:?}", error),
         };
-        CLIQuadriIORepresentation {
+        QuadriIORepresentationCLI {
             cli_pieces: cli_pieces,
             board_letters: board_letters,
         }
@@ -199,7 +199,7 @@ impl CLIQuadriIORepresentation {
     }
 }
 
-impl QuadriIORepresentation for CLIQuadriIORepresentation {
+impl QuadriIORepresentation for QuadriIORepresentationCLI {
     fn pick_piece_for_opponent(
         &self,
         board_states: Vec<BoardState>,
@@ -220,3 +220,14 @@ impl QuadriIORepresentation for CLIQuadriIORepresentation {
         self.read_chosen_square(&board_states, available_board_alphas)
     }
 }
+
+//TODO - write some tests
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+
+//     #[test]
+//     fn test_fn() -> Result<(), String> {
+//         assert_eq!(left, right);
+//     }
+// }
