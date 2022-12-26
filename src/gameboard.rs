@@ -277,6 +277,17 @@ impl GameboardAndPieces {
             .collect::<Vec<usize>>()
     }
     //TODO - write Test
+    fn coords_to_alpha(&self, coords: &Vec<[usize; 2]>) -> Vec<String> {
+        let ixs = self.coords_to_ixs(coords);
+        let alphas: Result<Vec<String>, String> =
+            ixs.iter().map(|ix| utils::num_to_alpha(*ix)).collect();
+
+        match alphas {
+            Ok(v) => v,
+            Err(_v) => panic!("should be inaccessible"),
+        }
+    }
+    //TODO - write Test
     fn ix_to_coord(&self, ix: &usize) -> [usize; 2] {
         let x = ix % X_DIM;
         let y = (ix - x) / X_DIM;

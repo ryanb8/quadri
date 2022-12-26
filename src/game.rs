@@ -9,15 +9,15 @@ use std::error::Error;
 
 #[derive(Debug, Clone)]
 pub struct TurnState {
-    turn: usize,
-    phase: String,
-    current_actor: usize,
+    pub turn: usize,
+    pub phase: String,
+    pub current_actor: usize,
 }
 #[derive(Debug, Clone)]
 pub struct WinnerState {
     complete: bool,
     winner: Option<usize>,
-    winning_quadris: Option<Vec<Vec<[usize; 2]>>>,
+    winning_quadris_coords: Option<Vec<Vec<[usize; 2]>>>,
 }
 #[derive(Debug, Clone)]
 pub struct Game<T: QuadriIORepresentation> {
@@ -28,8 +28,14 @@ pub struct Game<T: QuadriIORepresentation> {
 }
 
 impl WinnerState {
-    fn is_complete(&self) -> bool {
+    pub fn is_complete(&self) -> bool {
         self.complete
+    }
+    pub fn get_winning_player(&self) -> Option<usize> {
+        self.winner.clone()
+    }
+    pub fn get_winning_quadris_as_coord(&self) -> Option<Vec<Vec<[usize; 2]>>> {
+        self.winning_quadris_coords.clone()
     }
 }
 
@@ -46,10 +52,10 @@ impl TurnState {
         self.increment_turn_and_phase();
     }
     fn increment_actor(&mut self) -> () {
-        self.current_actor = match self.current_actor {
-            1 => 2,
-            2 => 1,
-            _ => panic!("Quadri is a two player game"),
+        if self.current_actor == 1 {
+            self.current_actor = 2;
+        } else {
+            self.current_actor = 1;
         }
     }
     fn increment_turn_and_phase(&mut self) -> () {
@@ -79,20 +85,26 @@ impl Game<QuadriIORepresentationCLI> {
 impl<T: QuadriIORepresentation> Game<T> {
     pub fn play_game(&mut self) -> Result<(), Box<dyn Error>> {
         loop {
-            let piece_ix = self
-                .representation_io
-                .pick_piece_for_opponent(self.get_board_states(), self.get_piece_states());
-            let board_ix = self
-                .representation_io
-                .pick_place_for_piece(self.get_board_states(), piece_ix);
+            let piece_ix = self.representation_io.pick_piece_for_opponent(
+                &self.turn_state,
+                self.get_board_states(),
+                self.get_piece_states(),
+            );
+            self.turn_state.increment_turn();
+            let board_ix = self.representation_io.pick_place_for_piece(
+                &self.turn_state,
+                self.get_board_states(),
+                piece_ix,
+            );
             self.place_piece(piece_ix, board_ix);
             let ws = self.get_winner_state();
             if ws.is_complete() {
                 println!("Game is done! Winner!");
+                self.representation_io
+                    .alert_winner(ws, self.get_board_states());
                 break;
-                //TODO - alert winner
             }
-            self.turn_state.increment_turn_and_phase();
+            self.turn_state.increment_turn();
         }
         Ok(())
     }
@@ -128,12 +140,12 @@ impl<T: QuadriIORepresentation> Game<T> {
             true => WinnerState {
                 complete: true,
                 winner: None,
-                winning_quadris: Some(quadri_coords),
+                winning_quadris_coords: Some(quadri_coords),
             },
             false => WinnerState {
                 complete: false,
                 winner: None,
-                winning_quadris: None,
+                winning_quadris_coords: None,
             },
         }
     }

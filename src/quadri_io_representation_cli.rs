@@ -5,6 +5,8 @@ use std::collections::HashSet;
 use std::io;
 use std::io::Write;
 
+use crate::game::TurnState;
+use crate::game::WinnerState;
 use crate::gameboard::BoardState;
 use crate::gameboard::PieceState;
 use crate::gameboard::X_DIM;
@@ -201,22 +203,54 @@ impl QuadriIORepresentationCLI {
 impl QuadriIORepresentation for QuadriIORepresentationCLI {
     fn pick_piece_for_opponent(
         &self,
+        turn_state: &TurnState,
         board_states: Vec<BoardState>,
         piece_states: Vec<PieceState>,
     ) -> usize {
+        //TODO:  tell who's turn it is
         println!("Current Board:");
         self.print_board(&board_states, false);
-        println!("Pick a piece for opponent to place: ");
+        println!(
+            "Player {}, Pick a piece for opponent to place: ",
+            turn_state.current_actor
+        );
         let avaliable_piece_ixs = self.get_available_piece_ixs(&piece_states);
         self.print_piece_bank(&piece_states);
         self.read_chosen_piece(avaliable_piece_ixs)
     }
-    fn pick_place_for_piece(&self, board_states: Vec<BoardState>, piece_ix: usize) -> usize {
-        println!("Place piece {}", self.cli_pieces[piece_ix].print);
-        println!("Pick a space on the board:");
+    fn pick_place_for_piece(
+        &self,
+        turn_state: &TurnState,
+        board_states: Vec<BoardState>,
+        piece_ix: usize,
+    ) -> usize {
+        println!(
+            "Player {}, you need to place piece {}",
+            turn_state.current_actor, self.cli_pieces[piece_ix].print
+        );
+        println!(
+            "Player {}, pick a space on the board:",
+            turn_state.current_actor
+        );
         let available_board_alphas = self.get_available_board_alphas(&board_states);
         self.print_board(&board_states, true);
         self.read_chosen_square(available_board_alphas)
+    }
+    fn alert_winner(&self, winner_state: WinnerState, board_states: Vec<BoardState>) -> () {
+        let winning_player = winner_state.get_winning_player();
+        match winning_player {
+            Some(u) => println!("Player {} is winner!", u),
+            None => println!("No winner yet; keep playing!"),
+        }
+        println!("Winning Quadri(s) treating (0,0) as top left corner:");
+        self.print_board(&board_states, false);
+        let winning_quadris = match winner_state.get_winning_quadris_as_coord() {
+            Some(v) => v,
+            None => panic!("inacccessible"),
+        };
+        for v in winning_quadris {
+            println!("{:?}", v);
+        }
     }
 }
 
