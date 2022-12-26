@@ -23,17 +23,20 @@ pub struct QuadriIORepresentationCLI {
 }
 
 struct CLIGamePiece {
-    ix: usize,
-    print: ColoredString,
+    print: String,
 }
 
 impl QuadriIORepresentationCLI {
     pub fn new(all_pieces: Vec<PieceState>) -> QuadriIORepresentationCLI {
         let cli_pieces = all_pieces
             .iter()
-            .map(|ps| CLIGamePiece {
-                ix: ps.piece_ix,
-                print: QuadriIORepresentationCLI::get_piece_print(&ps.piece.ats),
+            .map(|ps| {
+                let this_string = format!(
+                    "{}",
+                    QuadriIORepresentationCLI::get_piece_print(&ps.piece.ats)
+                );
+
+                CLIGamePiece { print: this_string }
             })
             .collect();
         let board_letters_result = (1..17).map(|x| utils::num_to_alpha(x)).collect();
@@ -173,11 +176,7 @@ impl QuadriIORepresentationCLI {
             }
         }
     }
-    fn read_chosen_square(
-        &self,
-        board_states: &Vec<BoardState>,
-        available_board_letters: HashSet<String>,
-    ) -> usize {
+    fn read_chosen_square(&self, available_board_letters: HashSet<String>) -> usize {
         loop {
             print!("Space Label:\t");
             io::stdout().flush().unwrap();
@@ -217,7 +216,7 @@ impl QuadriIORepresentation for QuadriIORepresentationCLI {
         println!("Pick a space on the board:");
         let available_board_alphas = self.get_available_board_alphas(&board_states);
         self.print_board(&board_states, true);
-        self.read_chosen_square(&board_states, available_board_alphas)
+        self.read_chosen_square(available_board_alphas)
     }
 }
 

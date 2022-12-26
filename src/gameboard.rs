@@ -6,7 +6,6 @@ pub static X_DIM: usize = 4;
 pub static Y_DIM: usize = 4;
 
 struct QuadriIdentifier<'a, 'b> {
-    pub ix: usize,
     pub coords: &'a Vec<[usize; 2]>,
     pieces: Vec<Option<&'b GamePiece>>,
 }
@@ -14,11 +13,9 @@ struct QuadriIdentifier<'a, 'b> {
 impl QuadriIdentifier<'_, '_> {
     fn new<'a, 'b>(
         gbap: &'b GameboardAndPieces,
-        ix: usize,
         coords: &'a Vec<[usize; 2]>,
     ) -> QuadriIdentifier<'a, 'b> {
         QuadriIdentifier {
-            ix: ix,
             coords: coords,
             pieces: gbap
                 .get_pieces_at_coords(coords)
@@ -83,12 +80,6 @@ pub struct BoardState<'a> {
     pub piece_ix: Option<usize>,
 }
 
-#[derive(Debug, Clone)]
-pub struct GameState<'a, 'b> {
-    board_state: Vec<BoardState<'a>>,
-    piece_state: Vec<PieceState<'b>>,
-}
-
 impl GameboardAndPieces {
     pub fn new() -> GameboardAndPieces {
         // let mut this_board: Vec<Option<usize>> = (0..(4 * 4)).map(|_| None).collect();
@@ -103,6 +94,9 @@ impl GameboardAndPieces {
     // Actions
     //TODO - write Test
     pub fn place_piece(&mut self, piece_index: usize, board_index: usize) -> Result<usize, String> {
+        //TODO - this really shouldlnt' return a result (or we need to handle the result effectivelly
+        // With the CLI representation, the representation enforces that the piece-index and board_index are valid
+        // I'm unsure how this will generalize with a gui...
         println!(
             "DEBUG: piece_index: {}, board_index: {}",
             piece_index, board_index
@@ -120,6 +114,7 @@ impl GameboardAndPieces {
 
     //unused but retain for now.
     //TODO - write Test
+    #[allow(dead_code)]
     pub fn remove_piece(&mut self, board_index: usize) -> Result<usize, String> {
         let current_piece_index = self
             .get_piece_ix_at_board_ix(board_index)?
@@ -166,7 +161,7 @@ impl GameboardAndPieces {
 
         let mut piece_states = [board_piece_states, bank_piece_states].concat();
 
-        piece_states.sort_by(|a, b| b.piece_ix.cmp(&a.piece_ix));
+        piece_states.sort_by(|a, b| a.piece_ix.cmp(&b.piece_ix));
         piece_states
     }
 
@@ -197,20 +192,12 @@ impl GameboardAndPieces {
             .collect()
     }
 
-    pub fn get_game_state(&self) -> GameState {
-        GameState {
-            board_state: self.get_board_states(),
-            piece_state: self.get_piece_states(),
-        }
-    }
-
     //TODO - write Test(s)
     pub fn check_all_quadris(&self) -> (bool, Vec<Vec<[usize; 2]>>) {
         let quadri_validators: Vec<QuadriIdentifier> = self
             .quadri_coords
             .iter()
-            .enumerate()
-            .map(|(ix, coords)| QuadriIdentifier::new(self, ix, coords))
+            .map(|coords| QuadriIdentifier::new(self, coords))
             .collect();
 
         let valid_quadris: Vec<Vec<[usize; 2]>> = quadri_validators
@@ -240,7 +227,7 @@ impl GameboardAndPieces {
     fn get_piece_at_index(&self, board_index: usize) -> Result<Option<&GamePiece>, String> {
         match self.board[board_index] {
             Some(piece_ix) => Ok(Some(&self.pieces[piece_ix])),
-            none => Ok(None),
+            None => Ok(None),
         }
     }
     fn get_piece_at_coord(&self, x: usize, y: usize) -> Result<Option<&GamePiece>, String> {
@@ -300,25 +287,25 @@ impl GameboardAndPieces {
         self.is_valid_board_index(self.coord_to_ix(&x, &y))
     }
     fn is_valid_board_index(&self, board_index: usize) -> bool {
-        board_index >= 0 && board_index < X_DIM * Y_DIM
+        board_index < X_DIM * Y_DIM
     }
     //TODO - write Test
     fn piece_is_placed(&self, piece_ix: &usize) -> bool {
         match self.bank[*piece_ix] {
-            Some(u) => false,
+            Some(_u) => false,
             None => true,
         }
     }
     //TODO - write Test
     fn space_is_full_by_coord(&self, x: usize, y: usize) -> bool {
         match self.board[self.coord_to_ix(&x, &y)] {
-            Some(piece_ix) => true,
+            Some(_piece_ix) => true,
             None => false,
         }
     }
     fn space_is_full(&self, board_ix: usize) -> bool {
         match self.board[board_ix] {
-            Some(piece_ix) => true,
+            Some(_piece_ix) => true,
             None => false,
         }
     }
@@ -391,7 +378,6 @@ mod test {
             pieces_are_quadri.iter().map(|gp| Some(gp)).collect();
 
         let q = QuadriIdentifier {
-            ix: 1,
             coords: &coords,
             pieces: opt_ref_pieces_are_quadri,
         };

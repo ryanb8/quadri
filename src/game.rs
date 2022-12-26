@@ -115,8 +115,18 @@ impl<T: QuadriIORepresentation> Game<T> {
         self.board_and_pieces.get_board_states()
     }
 
-    fn place_piece(&mut self, piece_ix: usize, board_ix: usize) -> Result<usize, String> {
-        self.board_and_pieces.place_piece(piece_ix, board_ix)
+    fn place_piece(&mut self, piece_ix: usize, board_ix: usize) -> usize {
+        //TODO - this has been tweaked to not return a result, but realistically we need to work on cleaning
+        // the API between this method and the associated `board_and_pieces.place_piece` method.
+        // I don't really want this to retry; that responsbility should be the onus of the representation/IO set
+        // I don't know how that will generalize
+        loop {
+            let response = self.board_and_pieces.place_piece(piece_ix, board_ix);
+            match response {
+                Ok(u) => return u,
+                Err(s) => println!("debug pick_piece: {}", s),
+            }
+        }
     }
 
     fn check_for_quadris(&self) -> (bool, Vec<Vec<[usize; 2]>>) {
