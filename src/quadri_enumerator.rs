@@ -1,4 +1,6 @@
 use std::cmp::min;
+
+#[cfg(test)]
 use std::collections::BTreeSet;
 
 #[derive(Debug)]

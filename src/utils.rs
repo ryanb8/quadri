@@ -21,7 +21,6 @@ pub fn num_to_alpha(n: usize) -> Result<String, String> {
 
 pub fn convert_to_binary(x: usize) -> Vec<i8> {
     // usize to vector of integers
-    // usize => only 0 or positive integers
     let mut binary = Vec::new();
     let mut v = x;
     if v == 0 {
