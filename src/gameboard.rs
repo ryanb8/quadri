@@ -383,20 +383,4 @@ mod test {
         };
         assert_eq!(q.pieces_are_quadri(), true)
     }
-    // fn test_quadri_identifier_unrwap_pieces_1() {
-    //     let coords = get_coords();
-    //     let pieces_are_quadri = get_pieces_that_are_quadri();
-    //     let opt_ref_pieces_are_quadri: Vec<Option<&GamePiece>> =
-    //         pieces_are_quadri.iter().map(|gp| Some(gp)).collect();
-    //     let expected = get_pieces_that_are_quadri();
-
-    //     let q = QuadriIdentifier {
-    //         ix: 1,
-    //         coords: &coords,
-    //         pieces: opt_pieces_are_quadri,
-    //     };
-
-    //     let actual = q.unwraped_pieces();
-    //     assert_eq!(actual, expected)
-    // }
 }

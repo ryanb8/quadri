@@ -27,16 +27,6 @@ pub struct Game<T: QuadriIORepresentation> {
     representation_io: T,
 }
 
-// // public api:
-// // start game
-// // get game state
-// // - list available pieces
-// // - list board and pieces
-// // - list turn /move
-// // - any winners
-// // pick piece for opponent
-// // place piece on board - option to return winners or not
-
 impl WinnerState {
     fn is_complete(&self) -> bool {
         self.complete
