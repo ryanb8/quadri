@@ -3,7 +3,6 @@ use std::error::Error;
 use quadri::game::Game;
 
 // Readme for getting started/playing
-// TODO: winner state and turn state have weird apis - return clones - board_and_pieces returns references
 // TODO: Tests
 // TODO: GUI
 // TODO: Handle errors intelligently, none of this String mess

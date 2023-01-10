@@ -152,7 +152,6 @@ impl QuadriIORepresentationCLI {
         board_states
             .iter()
             .filter(|bs| !bs.square_full)
-            //TODO:: here
             .map(|bs| {
                 self.board_letters[QuadriIORepresentationCLI::ind_to_letter_ind(bs.square_ix)]
                     .clone()
