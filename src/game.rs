@@ -7,13 +7,13 @@ use crate::quadri_io_representation_cli::QuadriIORepresentationCLI;
 use crate::{gameboard::GameboardAndPieces, quadri_io_representation::QuadriIORepresentation};
 use std::error::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TurnState {
     pub turn: usize,
     pub phase: String,
     pub current_actor: usize,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WinnerState {
     pub complete: bool,
     pub winner: Option<usize>,
@@ -124,6 +124,7 @@ impl<T: QuadriIORepresentation> Game<T> {
     fn check_for_quadris(&self) -> (bool, Vec<Vec<[usize; 2]>>) {
         self.board_and_pieces.check_all_quadris()
     }
+
     fn get_winner_state(&self) -> WinnerState {
         let (are_quadris, quadri_coords) = self.check_for_quadris();
         match are_quadris {
@@ -138,5 +139,59 @@ impl<T: QuadriIORepresentation> Game<T> {
                 winning_quadris_coords: None,
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_increment_turn_actor_phase() {
+        let mut ts = TurnState::setup();
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 1,
+                phase: PHASE_PLACE.to_string(),
+                current_actor: 2
+            },
+            "increment 1"
+        );
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 2,
+                phase: PHASE_PICK.to_string(),
+                current_actor: 2
+            },
+            "increment 2"
+        );
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 2,
+                phase: PHASE_PLACE.to_string(),
+                current_actor: 1
+            },
+            "increment 3"
+        );
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 3,
+                phase: PHASE_PICK.to_string(),
+                current_actor: 1
+            },
+            "increment 4"
+        );
     }
 }
