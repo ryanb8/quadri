@@ -97,10 +97,6 @@ impl GameboardAndPieces {
         //TODO - this really shouldlnt' return a result (or we need to handle the result effectivelly
         // With the CLI representation, the representation enforces that the piece-index and board_index are valid
         // I'm unsure how this will generalize with a gui...
-        println!(
-            "DEBUG: piece_index: {}, board_index: {}",
-            piece_index, board_index
-        );
         if self.piece_is_placed(&piece_index) {
             return Err("This piece already on board".to_string());
         }
@@ -266,7 +262,7 @@ impl GameboardAndPieces {
     // Internal utils
     //TODO - write Test
     fn coord_to_ix(&self, x: &usize, y: &usize) -> usize {
-        x + (y * X_DIM)
+        y + (x * Y_DIM)
     }
     //unused but retain for now
     //TODO - write Test

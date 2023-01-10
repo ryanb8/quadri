@@ -2,6 +2,7 @@ use colored::ColoredString;
 use colored::Colorize;
 
 use std::collections::HashSet;
+use std::hash::Hash;
 use std::io;
 use std::io::Write;
 
@@ -82,24 +83,66 @@ impl QuadriIORepresentationCLI {
         res_c
     }
 
-    fn get_print_board(&self, board_states: &Vec<BoardState>, use_letters: bool) -> String {
+    fn letter_ind_to_ind(u: usize) -> usize {
+        let jx = u % 4;
+        let ix = ((X_DIM * Y_DIM) - X_DIM - (u - jx)) / X_DIM;
+        QuadriIORepresentationCLI::ix_jx_to_ind(ix, jx)
+    }
+
+    fn ind_to_letter_ind(u: usize) -> usize {
+        let jx = u % 4;
+        let ix = (u - jx) / X_DIM;
+        QuadriIORepresentationCLI::ix_jx_to_letter_ind(ix, jx)
+    }
+
+    fn ix_jx_to_letter_ind(ix: usize, jx: usize) -> usize {
+        X_DIM * Y_DIM - (X_DIM * (ix + 1)) + jx
+    }
+
+    fn ix_jx_to_ind(ix: usize, jx: usize) -> usize {
+        (ix * X_DIM) + jx
+    }
+
+    fn get_print_board(
+        &self,
+        board_states: &Vec<BoardState>,
+        use_letters: bool,
+        fill_coords: Option<Vec<[usize; 2]>>,
+    ) -> String {
+        let limited_coords = fill_coords.is_some();
+        let valid_coords = match fill_coords {
+            Some(c) => HashSet::from_iter(c.into_iter()),
+            None => HashSet::<[usize; 2]>::new(),
+        };
+
         let mut board = String::new();
         for ix in 0..X_DIM {
-            board.push_str(BOARD_SEPARATOR);
-            board.push_str("\n");
-            board.push_str("| ");
+            let mut this_line = String::new();
+            this_line.push_str(BOARD_SEPARATOR);
+            this_line.push_str("\n");
+            this_line.push_str("| ");
             for jx in 0..Y_DIM {
-                let this_ind = (ix * Y_DIM) + jx;
-                let this_str = match (board_states[this_ind].piece_ix, use_letters) {
-                    (None, false) => EMPTY_SPACE,
-                    (None, true) => &self.board_letters[this_ind],
-                    (Some(p_ix), _) => &self.cli_pieces[p_ix].print,
+                let this_coord = [ix, jx];
+                let this_ind = QuadriIORepresentationCLI::ix_jx_to_ind(ix, jx);
+                let this_letter_ind = QuadriIORepresentationCLI::ix_jx_to_letter_ind(ix, jx);
+                let mut force_empty = false;
+
+                if limited_coords & !valid_coords.contains(&this_coord) {
+                    force_empty = true;
+                }
+
+                let this_str = match (board_states[this_ind].piece_ix, use_letters, force_empty) {
+                    (None, false, _) => EMPTY_SPACE,
+                    (None, true, _) => &self.board_letters[this_letter_ind],
+                    (Some(p_ix), _, false) => &self.cli_pieces[p_ix].print,
+                    (Some(_p_ix), _, true) => EMPTY_SPACE,
                 };
-                board.push_str(this_str);
-                board.push_str(" | ");
+
+                this_line.push_str(this_str);
+                this_line.push_str(" | ");
             }
-            board = board.trim().to_string();
-            board.push_str("\n");
+            this_line = this_line.trim().to_string();
+            board = this_line + "\n" + &board;
         }
         board.push_str(BOARD_SEPARATOR);
         board.push_str("\n");
@@ -109,11 +152,20 @@ impl QuadriIORepresentationCLI {
         board_states
             .iter()
             .filter(|bs| !bs.square_full)
-            .map(|bs| self.board_letters[bs.square_ix].clone())
+            //TODO:: here
+            .map(|bs| {
+                self.board_letters[QuadriIORepresentationCLI::ind_to_letter_ind(bs.square_ix)]
+                    .clone()
+            })
             .collect()
     }
-    fn print_board(&self, board_states: &Vec<BoardState>, use_letters: bool) -> () {
-        let print_board = self.get_print_board(board_states, use_letters);
+    fn print_board(
+        &self,
+        board_states: &Vec<BoardState>,
+        use_letters: bool,
+        fill_coords: Option<Vec<[usize; 2]>>,
+    ) -> () {
+        let print_board = self.get_print_board(board_states, use_letters, fill_coords);
         println!("{}", print_board);
     }
     fn get_available_piece_ixs(&self, piece_states: &Vec<PieceState>) -> HashSet<usize> {
@@ -192,9 +244,10 @@ impl QuadriIORepresentationCLI {
             let v = choosen_space.trim_end().to_lowercase();
 
             if available_board_letters.contains(&v) {
-                return self.board_letters.iter().position(|s| s == &v).unwrap();
+                let letter_ind = self.board_letters.iter().position(|s| s == &v).unwrap();
+                return QuadriIORepresentationCLI::letter_ind_to_ind(letter_ind);
             } else {
-                println!("Space lable not valid - try again")
+                println!("Space label not valid - try again")
             }
         }
     }
@@ -207,9 +260,8 @@ impl QuadriIORepresentation for QuadriIORepresentationCLI {
         board_states: Vec<BoardState>,
         piece_states: Vec<PieceState>,
     ) -> usize {
-        //TODO:  tell who's turn it is
         println!("Current Board:");
-        self.print_board(&board_states, false);
+        self.print_board(&board_states, false, None);
         println!(
             "Player {}, Pick a piece for opponent to place: ",
             turn_state.current_actor
@@ -233,7 +285,7 @@ impl QuadriIORepresentation for QuadriIORepresentationCLI {
             turn_state.current_actor
         );
         let available_board_alphas = self.get_available_board_alphas(&board_states);
-        self.print_board(&board_states, true);
+        self.print_board(&board_states, true, None);
         self.read_chosen_square(available_board_alphas)
     }
     fn alert_winner(&self, winner_state: WinnerState, board_states: Vec<BoardState>) -> () {
@@ -242,14 +294,16 @@ impl QuadriIORepresentation for QuadriIORepresentationCLI {
             Some(u) => println!("Player {} is winner!", u),
             None => println!("No winner yet; keep playing!"),
         }
-        println!("Winning Quadri(s) treating (0,0) as top left corner:");
-        self.print_board(&board_states, false);
+        println!("Final board:");
+        self.print_board(&board_states, false, None);
+
         let winning_quadris = match winner_state.get_winning_quadris_as_coord() {
             Some(v) => v,
             None => panic!("inacccessible"),
         };
+        println!("Winning Quadri(s):");
         for v in winning_quadris {
-            println!("{:?}", v);
+            self.print_board(&board_states, false, Some(v));
         }
     }
 }

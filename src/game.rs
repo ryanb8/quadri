@@ -48,7 +48,9 @@ impl TurnState {
         }
     }
     pub fn increment_turn(&mut self) -> () {
-        self.increment_actor();
+        if self.phase == PHASE_PICK {
+            self.increment_actor();
+        }
         self.increment_turn_and_phase();
     }
     fn increment_actor(&mut self) -> () {
@@ -139,7 +141,7 @@ impl<T: QuadriIORepresentation> Game<T> {
         match are_quadris {
             true => WinnerState {
                 complete: true,
-                winner: None,
+                winner: Some(self.turn_state.current_actor),
                 winning_quadris_coords: Some(quadri_coords),
             },
             false => WinnerState {
