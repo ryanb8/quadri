@@ -2,19 +2,14 @@ use std::hash::{Hash, Hasher};
 
 static ALLOWED_ATTRIBUTE_VALUES: [i8; 2] = [0, 1];
 
-#[derive(Debug)]
-struct AV(i8); //allowed values
-
-impl AV {
-    fn in_allowed_values(value: i8) -> bool {
-        let mut is_valid = false;
-        for av in ALLOWED_ATTRIBUTE_VALUES {
-            if value == av {
-                is_valid = true;
-            }
+fn is_allowed_value(value: i8) -> bool {
+    let mut is_valid = false;
+    for av in ALLOWED_ATTRIBUTE_VALUES {
+        if value == av {
+            is_valid = true;
         }
-        is_valid
     }
+    is_valid
 }
 
 #[derive(Debug, Clone)]
@@ -43,7 +38,7 @@ impl GamePiece {
             return Err("Need 4 values for a piece".to_string());
         }
         for v in &values {
-            if !AV::in_allowed_values(*v) {
+            if !is_allowed_value(*v) {
                 return Err(format!(
                     "Values for pieces must be in {:?}",
                     ALLOWED_ATTRIBUTE_VALUES
