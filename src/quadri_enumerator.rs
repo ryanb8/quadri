@@ -113,7 +113,7 @@ impl QuadriEnumerator {
         QuadriEnumerator::transpose_coordinates(&mut coords);
         coords
     }
-    pub fn get_diagnoals(&self, len: usize) -> Vec<Vec<[usize; 2]>> {
+    pub fn get_diagonals(&self, len: usize) -> Vec<Vec<[usize; 2]>> {
         let mut all_diags = QuadriEnumerator::get_full_right_diagonals(self.x_dim, self.y_dim);
         all_diags.append(&mut QuadriEnumerator::get_full_left_diagonals(
             self.x_dim, self.y_dim,
@@ -311,18 +311,18 @@ mod test {
     }
 
     #[test]
-    fn test_diagnoals() {
+    fn test_diagonals() {
         let q = QuadriEnumerator::new(3, 3);
-        let diags = q.get_diagnoals(3);
+        let diags = q.get_diagonals(3);
         let expected: Vec<Vec<[usize; 2]>> =
             vec![vec![[0, 0], [1, 1], [2, 2]], vec![[0, 2], [1, 1], [2, 0]]];
         assert_eq!(vec_as_hs(diags), vec_as_hs(expected))
     }
 
     #[test]
-    fn test_diagnoals_short() {
+    fn test_diagonals_short() {
         let q = QuadriEnumerator::new(3, 3);
-        let diags = q.get_diagnoals(2);
+        let diags = q.get_diagonals(2);
         let expected: Vec<Vec<[usize; 2]>> = vec![
             vec![[0, 0], [1, 1]],
             vec![[1, 1], [2, 2]],
@@ -337,17 +337,17 @@ mod test {
     }
 
     #[test]
-    fn test_diagnoals_empty() {
+    fn test_diagonals_empty() {
         let q = QuadriEnumerator::new(3, 3);
-        let diags = q.get_diagnoals(0);
+        let diags = q.get_diagonals(0);
         let expected: Vec<Vec<[usize; 2]>> = vec![];
         assert_eq!(vec_as_hs(diags), vec_as_hs(expected))
     }
 
     #[test]
-    fn test_diagnoals_rectangle() {
+    fn test_diagonals_rectangle() {
         let q = QuadriEnumerator::new(2, 3);
-        let diags = q.get_diagnoals(2);
+        let diags = q.get_diagonals(2);
         let expected: Vec<Vec<[usize; 2]>> = vec![
             vec![[0, 0], [1, 1]],
             vec![[0, 2], [1, 1]],

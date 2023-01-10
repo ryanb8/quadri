@@ -245,7 +245,7 @@ impl GameboardAndPieces {
         let qe = quadri_enumerator::QuadriEnumerator::new(X_DIM, Y_DIM);
         let mut coord_sets = qe.get_horizontal(4);
         coord_sets.append(&mut qe.get_vertical(4));
-        coord_sets.append(&mut qe.get_diagnoals(4));
+        coord_sets.append(&mut qe.get_diagonals(4));
         coord_sets.append(&mut qe.get_square_corners());
         coord_sets
     }
