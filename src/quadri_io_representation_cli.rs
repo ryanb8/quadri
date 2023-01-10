@@ -289,7 +289,7 @@ impl QuadriIORepresentation for QuadriIORepresentationCLI {
         self.read_chosen_square(available_board_alphas)
     }
     fn alert_winner(&self, winner_state: WinnerState, board_states: Vec<BoardState>) -> () {
-        let winning_player = winner_state.get_winning_player();
+        let winning_player = winner_state.winner;
         match winning_player {
             Some(u) => println!("Player {} is winner!", u),
             None => println!("No winner yet; keep playing!"),
@@ -297,7 +297,7 @@ impl QuadriIORepresentation for QuadriIORepresentationCLI {
         println!("Final board:");
         self.print_board(&board_states, false, None);
 
-        let winning_quadris = match winner_state.get_winning_quadris_as_coord() {
+        let winning_quadris = match winner_state.winning_quadris_coords {
             Some(v) => v,
             None => panic!("inacccessible"),
         };

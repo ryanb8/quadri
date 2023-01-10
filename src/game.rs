@@ -15,9 +15,9 @@ pub struct TurnState {
 }
 #[derive(Debug, Clone)]
 pub struct WinnerState {
-    complete: bool,
-    winner: Option<usize>,
-    winning_quadris_coords: Option<Vec<Vec<[usize; 2]>>>,
+    pub complete: bool,
+    pub winner: Option<usize>,
+    pub winning_quadris_coords: Option<Vec<Vec<[usize; 2]>>>,
 }
 #[derive(Debug, Clone)]
 pub struct Game<T: QuadriIORepresentation> {
@@ -25,18 +25,6 @@ pub struct Game<T: QuadriIORepresentation> {
     board_and_pieces: GameboardAndPieces,
     turn_state: TurnState,
     representation_io: T,
-}
-
-impl WinnerState {
-    pub fn is_complete(&self) -> bool {
-        self.complete
-    }
-    pub fn get_winning_player(&self) -> Option<usize> {
-        self.winner.clone()
-    }
-    pub fn get_winning_quadris_as_coord(&self) -> Option<Vec<Vec<[usize; 2]>>> {
-        self.winning_quadris_coords.clone()
-    }
 }
 
 impl TurnState {
@@ -100,7 +88,7 @@ impl<T: QuadriIORepresentation> Game<T> {
             );
             self.place_piece(piece_ix, board_ix);
             let ws = self.get_winner_state();
-            if ws.is_complete() {
+            if ws.complete {
                 println!("Game is done! Winner!");
                 self.representation_io
                     .alert_winner(ws, self.get_board_states());
