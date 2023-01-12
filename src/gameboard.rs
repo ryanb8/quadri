@@ -63,7 +63,7 @@ pub struct GameboardAndPieces {
     quadri_coords: Vec<Vec<[usize; 2]>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PieceState<'a> {
     pub piece: &'a GamePiece,
     pub on_board: bool,
@@ -71,7 +71,7 @@ pub struct PieceState<'a> {
     pub piece_ix: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BoardState<'a> {
     pub square_ix: usize,
     pub location_coord: [usize; 2],
@@ -92,11 +92,16 @@ impl GameboardAndPieces {
     }
 
     // Actions
-    //TODO - write Test
     pub fn place_piece(&mut self, piece_index: usize, board_index: usize) -> Result<usize, String> {
         //TODO - this really shouldlnt' return a result (or we need to handle the result effectivelly
         // With the CLI representation, the representation enforces that the piece-index and board_index are valid
         // I'm unsure how this will generalize with a gui...
+        if !GameboardAndPieces::is_valid_board_index(board_index) {
+            return Err("This is an invalid board index".to_string());
+        }
+        if !GameboardAndPieces::is_valid_piece_index(piece_index) {
+            return Err("This is an invalid piece index".to_string());
+        }
         if self.piece_is_placed(&piece_index) {
             return Err("This piece already on board".to_string());
         }
@@ -109,7 +114,6 @@ impl GameboardAndPieces {
     }
 
     //unused but retain for now.
-    //TODO - write Test
     #[allow(dead_code)]
     pub fn remove_piece(&mut self, board_index: usize) -> Result<usize, String> {
         let current_piece_index = self
@@ -120,7 +124,6 @@ impl GameboardAndPieces {
         Ok(current_piece_index)
     }
 
-    //TODO - write Test
     pub fn get_piece_states(&self) -> Vec<PieceState> {
         // From Board
         let board_piece_states: Vec<PieceState> = self
@@ -161,7 +164,6 @@ impl GameboardAndPieces {
         piece_states
     }
 
-    //TODO - write Test
     pub fn get_board_states(&self) -> Vec<BoardState> {
         self.board
             .iter()
@@ -188,7 +190,6 @@ impl GameboardAndPieces {
             .collect()
     }
 
-    //TODO - write Test(s)
     pub fn check_all_quadris(&self) -> (bool, Vec<Vec<[usize; 2]>>) {
         let quadri_validators: Vec<QuadriIdentifier> = self
             .quadri_coords
@@ -276,7 +277,13 @@ impl GameboardAndPieces {
     }
 
     fn is_valid_board_index(board_index: usize) -> bool {
-        board_index < X_DIM * Y_DIM
+        GameboardAndPieces::is_valid_index(board_index)
+    }
+    fn is_valid_piece_index(piece_index: usize) -> bool {
+        GameboardAndPieces::is_valid_index(piece_index)
+    }
+    fn is_valid_index(ix: usize) -> bool {
+        ix < X_DIM * Y_DIM
     }
     fn piece_is_placed(&self, piece_ix: &usize) -> bool {
         match self.bank[*piece_ix] {
@@ -497,15 +504,12 @@ mod test_gameboard_and_pieces {
     }
 
     #[test]
-    fn test_has_valid_board_index() {
+    fn test_has_valid_index() {
         assert!(
-            !GameboardAndPieces::is_valid_board_index(17),
+            !GameboardAndPieces::is_valid_index(17),
             "test invalid index"
         );
-        assert!(
-            GameboardAndPieces::is_valid_board_index(12),
-            "test invalid index"
-        );
+        assert!(GameboardAndPieces::is_valid_index(12), "test invalid index");
     }
 
     #[test]
@@ -543,5 +547,133 @@ mod test_gameboard_and_pieces {
             ]],
         );
         assert_eq!(actual_w, expected_w, "quadris on board");
+    }
+
+    #[test]
+    fn test_get_board_states() {
+        let gb = get_test_board();
+        let expected_first_4 = vec![
+            BoardState {
+                square_ix: 0,
+                location_coord: [0, 0],
+                square_full: false,
+                piece: None,
+                piece_ix: None,
+            },
+            BoardState {
+                square_ix: 1,
+                location_coord: [0, 1],
+                square_full: true,
+                piece: Some(&gb.pieces[1]),
+                piece_ix: Some(1 as usize),
+            },
+            BoardState {
+                square_ix: 2,
+                location_coord: [0, 2],
+                square_full: false,
+                piece: None,
+                piece_ix: None,
+            },
+            BoardState {
+                square_ix: 3,
+                location_coord: [0, 3],
+                square_full: true,
+                piece: Some(&gb.pieces[4]),
+                piece_ix: Some(4 as usize),
+            },
+        ];
+        let actual = gb.get_board_states();
+        assert_eq!(actual[0..4], expected_first_4[0..4], "Testing board states");
+    }
+
+    #[test]
+    fn test_get_piece_states() {
+        let gb = get_test_board();
+        let expected_first_5 = vec![
+            PieceState {
+                piece: &gb.pieces[0],
+                on_board: false,
+                location_coord: None,
+                piece_ix: 0,
+            },
+            PieceState {
+                piece: &gb.pieces[1],
+                on_board: true,
+                location_coord: Some([0, 1]),
+                piece_ix: 1,
+            },
+            PieceState {
+                piece: &gb.pieces[2],
+                on_board: false,
+                location_coord: None,
+                piece_ix: 2,
+            },
+            PieceState {
+                piece: &gb.pieces[3],
+                on_board: false,
+                location_coord: None,
+                piece_ix: 3,
+            },
+            PieceState {
+                piece: &gb.pieces[4],
+                on_board: true,
+                location_coord: Some([0, 3]),
+                piece_ix: 4,
+            },
+        ];
+        let actual = gb.get_piece_states();
+        assert_eq!(expected_first_5[0..5], actual[0..5], "Testing piece states");
+    }
+
+    #[test]
+    fn test_remove_piece() -> Result<(), String> {
+        let mut gb = get_test_board();
+        let rem_res = gb.remove_piece(3)?;
+        assert_eq!(
+            rem_res, 4,
+            "testing remove piece - should return piece index"
+        );
+
+        assert!(
+            gb.remove_piece(0).is_err(),
+            "testing remove piece - should error on already empty space"
+        );
+        assert!(
+            gb.remove_piece(20).is_err(),
+            "testing remove piece - should error on invalid index"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_place_piece() -> Result<(), String> {
+        let mut gb = get_test_board();
+        let place_piece_res = gb.place_piece(0, 15)?;
+        assert_eq!(
+            place_piece_res, 0,
+            "Test place piece - return piece index on success"
+        );
+
+        assert!(
+            gb.place_piece(1, 10).is_err(),
+            "Test place piece - error on piece already on board"
+        );
+        assert!(
+            gb.place_piece(8, 1).is_err(),
+            "Test place piece - error when piece already on space"
+        );
+        assert!(
+            gb.place_piece(1, 1).is_err(),
+            "Test place piece - error when piece already on space AND space taken"
+        );
+        assert!(
+            gb.place_piece(20, 9).is_err(),
+            "Test place piece - error when invalid piece index"
+        );
+        assert!(
+            gb.place_piece(9, 20).is_err(),
+            "Test place piece - error when invalid board index"
+        );
+        Ok(())
     }
 }
