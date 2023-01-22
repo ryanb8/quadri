@@ -1,3 +1,4 @@
+use crate::game::Game;
 use crate::gamepieces::GamePiece;
 use crate::quadri_enumerator;
 use crate::utils;
@@ -30,7 +31,7 @@ impl QuadriIdentifier<'_, '_> {
         // have the same value in at least one position
         let number_of_pieces = self.pieces.len();
         if number_of_pieces != X_DIM {
-            panic!("Must provide at least one piece")
+            panic!("Must provide exactly {} option_pieces", X_DIM)
         }
 
         let unwrapped_pieces = self.unwraped_pieces();
@@ -63,7 +64,7 @@ pub struct GameboardAndPieces {
     quadri_coords: Vec<Vec<[usize; 2]>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PieceState<'a> {
     pub piece: &'a GamePiece,
     pub on_board: bool,
@@ -71,7 +72,7 @@ pub struct PieceState<'a> {
     pub piece_ix: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BoardState<'a> {
     pub square_ix: usize,
     pub location_coord: [usize; 2],
@@ -92,15 +93,16 @@ impl GameboardAndPieces {
     }
 
     // Actions
-    //TODO - write Test
     pub fn place_piece(&mut self, piece_index: usize, board_index: usize) -> Result<usize, String> {
         //TODO - this really shouldlnt' return a result (or we need to handle the result effectivelly
         // With the CLI representation, the representation enforces that the piece-index and board_index are valid
         // I'm unsure how this will generalize with a gui...
-        println!(
-            "DEBUG: piece_index: {}, board_index: {}",
-            piece_index, board_index
-        );
+        if !GameboardAndPieces::is_valid_board_index(board_index) {
+            return Err("This is an invalid board index".to_string());
+        }
+        if !GameboardAndPieces::is_valid_piece_index(piece_index) {
+            return Err("This is an invalid piece index".to_string());
+        }
         if self.piece_is_placed(&piece_index) {
             return Err("This piece already on board".to_string());
         }
@@ -113,7 +115,6 @@ impl GameboardAndPieces {
     }
 
     //unused but retain for now.
-    //TODO - write Test
     #[allow(dead_code)]
     pub fn remove_piece(&mut self, board_index: usize) -> Result<usize, String> {
         let current_piece_index = self
@@ -124,7 +125,6 @@ impl GameboardAndPieces {
         Ok(current_piece_index)
     }
 
-    //TODO - write Test
     pub fn get_piece_states(&self) -> Vec<PieceState> {
         // From Board
         let board_piece_states: Vec<PieceState> = self
@@ -138,7 +138,7 @@ impl GameboardAndPieces {
             .map(|(b_ix, p_ix)| PieceState {
                 piece: &self.pieces[*p_ix],
                 on_board: true,
-                location_coord: Some(self.ix_to_coord(&b_ix)),
+                location_coord: Some(GameboardAndPieces::ix_to_coord(&b_ix)),
                 piece_ix: *p_ix,
             })
             .collect();
@@ -165,7 +165,6 @@ impl GameboardAndPieces {
         piece_states
     }
 
-    //TODO - write Test
     pub fn get_board_states(&self) -> Vec<BoardState> {
         self.board
             .iter()
@@ -183,7 +182,7 @@ impl GameboardAndPieces {
 
                 BoardState {
                     square_ix: ix,
-                    location_coord: self.ix_to_coord(&ix),
+                    location_coord: GameboardAndPieces::ix_to_coord(&ix),
                     square_full: s.is_some(),
                     piece: this_piece,
                     piece_ix: this_piece_ix,
@@ -192,7 +191,6 @@ impl GameboardAndPieces {
             .collect()
     }
 
-    //TODO - write Test(s)
     pub fn check_all_quadris(&self) -> (bool, Vec<Vec<[usize; 2]>>) {
         let quadri_validators: Vec<QuadriIdentifier> = self
             .quadri_coords
@@ -212,28 +210,25 @@ impl GameboardAndPieces {
     }
 
     // State getters by reference
-    //TODO - write Test
     fn get_piece_ix_at_board_ix(&self, board_index: usize) -> Result<Option<usize>, String> {
-        if !&self.is_valid_board_index(board_index) {
+        if !GameboardAndPieces::is_valid_board_index(board_index) {
             return Err("Board index out of bounds".to_string());
         }
         Ok(self.board[board_index])
     }
-    fn get_piece_ix_at_coord(&self, x: usize, y: usize) -> Result<Option<usize>, String> {
-        let board_index = self.coord_to_ix(&x, &y);
-        self.get_piece_ix_at_board_ix(board_index)
-    }
-    //TODO - write Test
     fn get_piece_at_index(&self, board_index: usize) -> Result<Option<&GamePiece>, String> {
+        if !GameboardAndPieces::is_valid_board_index(board_index) {
+            return Err("Board index out of bounds".to_string());
+        }
+
         match self.board[board_index] {
             Some(piece_ix) => Ok(Some(&self.pieces[piece_ix])),
             None => Ok(None),
         }
     }
     fn get_piece_at_coord(&self, x: usize, y: usize) -> Result<Option<&GamePiece>, String> {
-        self.get_piece_at_index(self.coord_to_ix(&x, &y))
+        self.get_piece_at_index(GameboardAndPieces::coord_to_ix(&x, &y))
     }
-    //TODO - write Test
     fn get_pieces_at_coords(
         &self,
         positions: &Vec<[usize; 2]>,
@@ -245,15 +240,15 @@ impl GameboardAndPieces {
     }
 
     // constructors:
-    fn get_quadri_coords() -> Vec<Vec<[usize; 2]>> {
+    pub fn get_quadri_coords() -> Vec<Vec<[usize; 2]>> {
         let qe = quadri_enumerator::QuadriEnumerator::new(X_DIM, Y_DIM);
         let mut coord_sets = qe.get_horizontal(4);
         coord_sets.append(&mut qe.get_vertical(4));
-        coord_sets.append(&mut qe.get_diagnoals(4));
+        coord_sets.append(&mut qe.get_diagonals(4));
         coord_sets.append(&mut qe.get_square_corners());
         coord_sets
     }
-    fn create_pieces() -> Vec<GamePiece> {
+    pub fn create_pieces() -> Vec<GamePiece> {
         let num_pieces: usize = 4 * 4;
         (0..num_pieces)
             .map(|ix| utils::convert_to_binary(ix))
@@ -263,57 +258,41 @@ impl GameboardAndPieces {
             .unwrap()
     }
 
-    // Internal utils
-    //TODO - write Test
-    fn coord_to_ix(&self, x: &usize, y: &usize) -> usize {
-        x + (y * X_DIM)
+    // External utils
+    pub fn coord_to_ix(x: &usize, y: &usize) -> usize {
+        y + (x * Y_DIM)
     }
-    //unused but retain for now
-    //TODO - write Test
-    fn coords_to_ixs(&self, coords: &Vec<[usize; 2]>) -> Vec<usize> {
+
+    pub fn coords_to_ixs(coords: &Vec<[usize; 2]>) -> Vec<usize> {
         coords
             .iter()
-            .map(|a| self.coord_to_ix(&a[0], &a[1]))
+            .map(|a| GameboardAndPieces::coord_to_ix(&a[0], &a[1]))
             .collect::<Vec<usize>>()
     }
-    //TODO - write Test
-    fn coords_to_alpha(&self, coords: &Vec<[usize; 2]>) -> Vec<String> {
-        let ixs = self.coords_to_ixs(coords);
-        let alphas: Result<Vec<String>, String> =
-            ixs.iter().map(|ix| utils::num_to_alpha(*ix)).collect();
 
-        match alphas {
-            Ok(v) => v,
-            Err(_v) => panic!("should be inaccessible"),
-        }
-    }
-    //TODO - write Test
-    fn ix_to_coord(&self, ix: &usize) -> [usize; 2] {
-        let x = ix % X_DIM;
-        let y = (ix - x) / X_DIM;
+    // Internal utils
+    pub(crate) fn ix_to_coord(ix: &usize) -> [usize; 2] {
+        let y = ix % X_DIM;
+        let x = (ix - y) / X_DIM;
         [x, y]
     }
-    //TODO - write Test
-    fn has_valid_coord(&self, x: usize, y: usize) -> bool {
-        self.is_valid_board_index(self.coord_to_ix(&x, &y))
+
+    fn is_valid_board_index(board_index: usize) -> bool {
+        GameboardAndPieces::is_valid_index(board_index)
     }
-    fn is_valid_board_index(&self, board_index: usize) -> bool {
-        board_index < X_DIM * Y_DIM
+    fn is_valid_piece_index(piece_index: usize) -> bool {
+        GameboardAndPieces::is_valid_index(piece_index)
     }
-    //TODO - write Test
+    fn is_valid_index(ix: usize) -> bool {
+        ix < X_DIM * Y_DIM
+    }
     fn piece_is_placed(&self, piece_ix: &usize) -> bool {
         match self.bank[*piece_ix] {
             Some(_u) => false,
             None => true,
         }
     }
-    //TODO - write Test
-    fn space_is_full_by_coord(&self, x: usize, y: usize) -> bool {
-        match self.board[self.coord_to_ix(&x, &y)] {
-            Some(_piece_ix) => true,
-            None => false,
-        }
-    }
+
     fn space_is_full(&self, board_ix: usize) -> bool {
         match self.board[board_ix] {
             Some(_piece_ix) => true,
@@ -323,22 +302,14 @@ impl GameboardAndPieces {
 }
 
 #[cfg(test)]
-mod test {
+mod test_quadri_identifier {
     use super::*;
 
     // TODO; figure out fixtures in rust. We hacking it for now.
-    fn get_coords() -> Vec<[usize; 2]> {
+    fn dummy_coords() -> Vec<[usize; 2]> {
         vec![[0, 0], [0, 1], [0, 2], [0, 3]]
     }
 
-    fn get_opt_pieces_that_are_quadri() -> Vec<Option<GamePiece>> {
-        vec![
-            Some(GamePiece::new_from_vec(vec![0, 0, 0, 0]).expect("this is valid")),
-            Some(GamePiece::new_from_vec(vec![0, 1, 0, 0]).expect("this is valid")),
-            Some(GamePiece::new_from_vec(vec![0, 0, 1, 0]).expect("this is valid")),
-            Some(GamePiece::new_from_vec(vec![0, 0, 0, 1]).expect("this is valid")),
-        ]
-    }
     fn get_pieces_that_are_quadri() -> Vec<GamePiece> {
         vec![
             GamePiece::new_from_vec(vec![0, 0, 0, 0]).expect("this is valid"),
@@ -348,15 +319,7 @@ mod test {
         ]
     }
 
-    fn get_opt_pieces_that_are_not_quadri_but_full() -> Vec<Option<GamePiece>> {
-        vec![
-            Some(GamePiece::new_from_vec(vec![1, 0, 0, 0]).expect("this is valid")),
-            Some(GamePiece::new_from_vec(vec![0, 1, 0, 0]).expect("this is valid")),
-            Some(GamePiece::new_from_vec(vec![0, 0, 1, 0]).expect("this is valid")),
-            Some(GamePiece::new_from_vec(vec![0, 0, 0, 1]).expect("this is valid")),
-        ]
-    }
-    fn get_pieces_that_are_not_quadri_but_full() -> Vec<GamePiece> {
+    fn get_pieces_that_are_not_quadri() -> Vec<GamePiece> {
         vec![
             GamePiece::new_from_vec(vec![1, 0, 0, 0]).expect("this is valid"),
             GamePiece::new_from_vec(vec![0, 1, 0, 0]).expect("this is valid"),
@@ -365,7 +328,7 @@ mod test {
         ]
     }
 
-    fn get_opt_pieces_that_are_not_quadri_with_empty() -> Vec<Option<GamePiece>> {
+    fn get_pieces_that_are_not_quadri_with_empty() -> Vec<Option<GamePiece>> {
         vec![
             None,
             Some(GamePiece::new_from_vec(vec![0, 1, 0, 0]).expect("this is valid")),
@@ -373,25 +336,345 @@ mod test {
             Some(GamePiece::new_from_vec(vec![0, 0, 0, 1]).expect("this is valid")),
         ]
     }
-    fn get_pieces_that_are_not_quadri_with_empty() -> Vec<GamePiece> {
-        vec![
-            GamePiece::new_from_vec(vec![0, 1, 0, 0]).expect("this is valid"),
-            GamePiece::new_from_vec(vec![0, 0, 1, 0]).expect("this is valid"),
-            GamePiece::new_from_vec(vec![0, 0, 0, 1]).expect("this is valid"),
-        ]
-    }
 
     #[test]
     fn test_pieces_are_quadri() {
-        let coords = get_coords();
+        let dummy_coords = dummy_coords();
         let pieces_are_quadri = get_pieces_that_are_quadri();
         let opt_ref_pieces_are_quadri: Vec<Option<&GamePiece>> =
             pieces_are_quadri.iter().map(|gp| Some(gp)).collect();
 
         let q = QuadriIdentifier {
-            coords: &coords,
+            coords: &dummy_coords,
             pieces: opt_ref_pieces_are_quadri,
         };
         assert_eq!(q.pieces_are_quadri(), true)
+    }
+
+    #[test]
+    fn test_pieces_are_not_quadri() {
+        let dummy_coords = dummy_coords();
+        let pieces_are_not_quadri = get_pieces_that_are_not_quadri();
+        let opt_ref_pieces_are_quadri: Vec<Option<&GamePiece>> =
+            pieces_are_not_quadri.iter().map(|gp| Some(gp)).collect();
+
+        let q = QuadriIdentifier {
+            coords: &dummy_coords,
+            pieces: opt_ref_pieces_are_quadri,
+        };
+        assert_eq!(q.pieces_are_quadri(), false)
+    }
+
+    #[test]
+    fn test_pieces_are_not_quadri_with_empty() {
+        let dummy_coords = dummy_coords();
+        let pieces_are_not_quadri = get_pieces_that_are_not_quadri_with_empty();
+        let ref_pieces_are_not_quadri: Vec<Option<&GamePiece>> = pieces_are_not_quadri
+            .iter()
+            .map(|o| match o {
+                Some(p) => Some(p),
+                None => None,
+            })
+            .collect();
+
+        let q = QuadriIdentifier {
+            coords: &dummy_coords,
+            pieces: ref_pieces_are_not_quadri,
+        };
+        assert_eq!(q.pieces_are_quadri(), false)
+    }
+}
+
+#[cfg(test)]
+mod test_gameboard_and_pieces {
+    use super::*;
+
+    fn get_test_board() -> GameboardAndPieces {
+        let pieces = GameboardAndPieces::create_pieces();
+
+        let mut board: Vec<Option<usize>> = (0..(X_DIM * Y_DIM)).map(|_| None).collect();
+        let mut bank: Vec<Option<usize>> = (0..(X_DIM * Y_DIM) as usize).map(|i| Some(i)).collect();
+        board[1] = Some(1);
+        bank[1] = None;
+        board[3] = Some(4);
+        bank[4] = None;
+        board[4] = Some(15);
+        bank[15] = None;
+
+        GameboardAndPieces {
+            board: board,
+            bank: bank,
+            pieces: pieces,
+            quadri_coords: GameboardAndPieces::get_quadri_coords(),
+        }
+    }
+
+    fn get_test_board_with_quadri() -> GameboardAndPieces {
+        let pieces = GameboardAndPieces::create_pieces();
+
+        let mut board: Vec<Option<usize>> = (0..(X_DIM * Y_DIM)).map(|_| None).collect();
+        let mut bank: Vec<Option<usize>> = (0..(X_DIM * Y_DIM) as usize).map(|i| Some(i)).collect();
+        // Middle square
+        board[9] = Some(1);
+        bank[1] = None;
+        board[10] = Some(2);
+        bank[2] = None;
+        board[5] = Some(3);
+        bank[3] = None;
+        board[6] = Some(0);
+        bank[0] = None;
+
+        GameboardAndPieces {
+            board: board,
+            bank: bank,
+            pieces: pieces,
+            quadri_coords: GameboardAndPieces::get_quadri_coords(),
+        }
+    }
+
+    #[test]
+    fn test_get_piece_ix_at_board_ix() -> Result<(), String> {
+        let gb = get_test_board();
+
+        let piece_ix = gb.get_piece_ix_at_board_ix(3)?;
+        assert_eq!(piece_ix, Some(4), "testing present piece");
+
+        let piece_ix = gb.get_piece_ix_at_board_ix(11)?;
+        assert_eq!(piece_ix, None, "Testing absent piece");
+
+        assert!(
+            gb.get_piece_ix_at_board_ix(23).is_err(),
+            "Testing invalid index"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_piece_at_index() -> Result<(), String> {
+        let gb = get_test_board();
+
+        let piece = gb.get_piece_at_index(3)?;
+        assert_eq!(piece, Some(&gb.pieces[4]), "Getting piece at index");
+
+        let piece = gb.get_piece_at_index(11)?;
+        assert_eq!(piece, None, "Getting absent piece at index");
+
+        assert!(gb.get_piece_at_index(23).is_err(), "Testing invalid index");
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_get_pieces_at_coords() -> Result<(), String> {
+        let coords: Vec<[usize; 2]> = vec![[0, 1], [0, 3], [2, 2]];
+        let gb = get_test_board();
+
+        let pieces = gb.get_pieces_at_coords(&coords)?;
+        assert_eq!(
+            pieces,
+            vec![Some(&gb.pieces[1]), Some(&gb.pieces[4]), None],
+            "Check valid and invalid"
+        );
+
+        let invalid_coords: Vec<[usize; 2]> = vec![[0, 1], [0, 3], [2, 2], [44, 44]];
+        assert!(gb.get_pieces_at_coords(&invalid_coords).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_coord_to_ix() {
+        let a = 1;
+        let b = 2;
+        assert_eq!(GameboardAndPieces::coord_to_ix(&a, &b), 6);
+    }
+
+    #[test]
+    fn test_coords_to_ix() {
+        let coords: Vec<[usize; 2]> = vec![[0, 0], [1, 2]];
+        let expected: Vec<usize> = vec![0, 6];
+        assert_eq!(GameboardAndPieces::coords_to_ixs(&coords), expected);
+    }
+
+    #[test]
+    fn test_ix_to_coord() {
+        let ix: usize = 6;
+        let expected: [usize; 2] = [1, 2];
+        assert_eq!(GameboardAndPieces::ix_to_coord(&ix), expected);
+    }
+
+    #[test]
+    fn test_has_valid_index() {
+        assert!(
+            !GameboardAndPieces::is_valid_index(17),
+            "test invalid index"
+        );
+        assert!(GameboardAndPieces::is_valid_index(12), "test invalid index");
+    }
+
+    #[test]
+    fn test_piece_is_placed() {
+        let gb = get_test_board();
+
+        assert!(gb.piece_is_placed(&4), "placed piece");
+        assert!(!gb.piece_is_placed(&6), "unplaced piece");
+    }
+
+    #[test]
+    fn test_space_is_full() {
+        let gb = get_test_board();
+
+        assert!(gb.space_is_full(3), "full space");
+        assert!(!gb.space_is_full(6), "empty space");
+    }
+
+    #[test]
+    fn test_check_all_quadris() {
+        let gb_no_quadris = get_test_board();
+        let actual_no = gb_no_quadris.check_all_quadris();
+        let expected_no = (false, vec![] as Vec<Vec<[usize; 2]>>);
+        assert_eq!(expected_no, actual_no, "No quadris on board");
+
+        let gb_w_quadris = get_test_board_with_quadri();
+        let actual_w = gb_w_quadris.check_all_quadris();
+        let expected_w = (
+            true,
+            vec![vec![
+                [1 as usize, 1 as usize],
+                [2 as usize, 1 as usize],
+                [1 as usize, 2 as usize],
+                [2 as usize, 2 as usize],
+            ]],
+        );
+        assert_eq!(actual_w, expected_w, "quadris on board");
+    }
+
+    #[test]
+    fn test_get_board_states() {
+        let gb = get_test_board();
+        let expected_first_4 = vec![
+            BoardState {
+                square_ix: 0,
+                location_coord: [0, 0],
+                square_full: false,
+                piece: None,
+                piece_ix: None,
+            },
+            BoardState {
+                square_ix: 1,
+                location_coord: [0, 1],
+                square_full: true,
+                piece: Some(&gb.pieces[1]),
+                piece_ix: Some(1 as usize),
+            },
+            BoardState {
+                square_ix: 2,
+                location_coord: [0, 2],
+                square_full: false,
+                piece: None,
+                piece_ix: None,
+            },
+            BoardState {
+                square_ix: 3,
+                location_coord: [0, 3],
+                square_full: true,
+                piece: Some(&gb.pieces[4]),
+                piece_ix: Some(4 as usize),
+            },
+        ];
+        let actual = gb.get_board_states();
+        assert_eq!(actual[0..4], expected_first_4[0..4], "Testing board states");
+    }
+
+    #[test]
+    fn test_get_piece_states() {
+        let gb = get_test_board();
+        let expected_first_5 = vec![
+            PieceState {
+                piece: &gb.pieces[0],
+                on_board: false,
+                location_coord: None,
+                piece_ix: 0,
+            },
+            PieceState {
+                piece: &gb.pieces[1],
+                on_board: true,
+                location_coord: Some([0, 1]),
+                piece_ix: 1,
+            },
+            PieceState {
+                piece: &gb.pieces[2],
+                on_board: false,
+                location_coord: None,
+                piece_ix: 2,
+            },
+            PieceState {
+                piece: &gb.pieces[3],
+                on_board: false,
+                location_coord: None,
+                piece_ix: 3,
+            },
+            PieceState {
+                piece: &gb.pieces[4],
+                on_board: true,
+                location_coord: Some([0, 3]),
+                piece_ix: 4,
+            },
+        ];
+        let actual = gb.get_piece_states();
+        assert_eq!(expected_first_5[0..5], actual[0..5], "Testing piece states");
+    }
+
+    #[test]
+    fn test_remove_piece() -> Result<(), String> {
+        let mut gb = get_test_board();
+        let rem_res = gb.remove_piece(3)?;
+        assert_eq!(
+            rem_res, 4,
+            "testing remove piece - should return piece index"
+        );
+
+        assert!(
+            gb.remove_piece(0).is_err(),
+            "testing remove piece - should error on already empty space"
+        );
+        assert!(
+            gb.remove_piece(20).is_err(),
+            "testing remove piece - should error on invalid index"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_place_piece() -> Result<(), String> {
+        let mut gb = get_test_board();
+        let place_piece_res = gb.place_piece(0, 15)?;
+        assert_eq!(
+            place_piece_res, 0,
+            "Test place piece - return piece index on success"
+        );
+
+        assert!(
+            gb.place_piece(1, 10).is_err(),
+            "Test place piece - error on piece already on board"
+        );
+        assert!(
+            gb.place_piece(8, 1).is_err(),
+            "Test place piece - error when piece already on space"
+        );
+        assert!(
+            gb.place_piece(1, 1).is_err(),
+            "Test place piece - error when piece already on space AND space taken"
+        );
+        assert!(
+            gb.place_piece(20, 9).is_err(),
+            "Test place piece - error when invalid piece index"
+        );
+        assert!(
+            gb.place_piece(9, 20).is_err(),
+            "Test place piece - error when invalid board index"
+        );
+        Ok(())
     }
 }

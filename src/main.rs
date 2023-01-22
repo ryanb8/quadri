@@ -2,8 +2,7 @@ use std::error::Error;
 
 use quadri::game::Game;
 
-// TODO: isolate winner state and turn state
-// TODO: better way to print winning quadris...
+// Readme for getting started/playing
 // TODO: Tests
 // TODO: GUI
 // TODO: Handle errors intelligently, none of this String mess

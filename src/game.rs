@@ -7,17 +7,17 @@ use crate::quadri_io_representation_cli::QuadriIORepresentationCLI;
 use crate::{gameboard::GameboardAndPieces, quadri_io_representation::QuadriIORepresentation};
 use std::error::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TurnState {
     pub turn: usize,
     pub phase: String,
     pub current_actor: usize,
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WinnerState {
-    complete: bool,
-    winner: Option<usize>,
-    winning_quadris_coords: Option<Vec<Vec<[usize; 2]>>>,
+    pub complete: bool,
+    pub winner: Option<usize>,
+    pub winning_quadris_coords: Option<Vec<Vec<[usize; 2]>>>,
 }
 #[derive(Debug, Clone)]
 pub struct Game<T: QuadriIORepresentation> {
@@ -25,18 +25,6 @@ pub struct Game<T: QuadriIORepresentation> {
     board_and_pieces: GameboardAndPieces,
     turn_state: TurnState,
     representation_io: T,
-}
-
-impl WinnerState {
-    pub fn is_complete(&self) -> bool {
-        self.complete
-    }
-    pub fn get_winning_player(&self) -> Option<usize> {
-        self.winner.clone()
-    }
-    pub fn get_winning_quadris_as_coord(&self) -> Option<Vec<Vec<[usize; 2]>>> {
-        self.winning_quadris_coords.clone()
-    }
 }
 
 impl TurnState {
@@ -48,7 +36,9 @@ impl TurnState {
         }
     }
     pub fn increment_turn(&mut self) -> () {
-        self.increment_actor();
+        if self.phase == PHASE_PICK {
+            self.increment_actor();
+        }
         self.increment_turn_and_phase();
     }
     fn increment_actor(&mut self) -> () {
@@ -98,7 +88,7 @@ impl<T: QuadriIORepresentation> Game<T> {
             );
             self.place_piece(piece_ix, board_ix);
             let ws = self.get_winner_state();
-            if ws.is_complete() {
+            if ws.complete {
                 println!("Game is done! Winner!");
                 self.representation_io
                     .alert_winner(ws, self.get_board_states());
@@ -134,12 +124,13 @@ impl<T: QuadriIORepresentation> Game<T> {
     fn check_for_quadris(&self) -> (bool, Vec<Vec<[usize; 2]>>) {
         self.board_and_pieces.check_all_quadris()
     }
+
     fn get_winner_state(&self) -> WinnerState {
         let (are_quadris, quadri_coords) = self.check_for_quadris();
         match are_quadris {
             true => WinnerState {
                 complete: true,
-                winner: None,
+                winner: Some(self.turn_state.current_actor),
                 winning_quadris_coords: Some(quadri_coords),
             },
             false => WinnerState {
@@ -148,5 +139,59 @@ impl<T: QuadriIORepresentation> Game<T> {
                 winning_quadris_coords: None,
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_increment_turn_actor_phase() {
+        let mut ts = TurnState::setup();
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 1,
+                phase: PHASE_PLACE.to_string(),
+                current_actor: 2
+            },
+            "increment 1"
+        );
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 2,
+                phase: PHASE_PICK.to_string(),
+                current_actor: 2
+            },
+            "increment 2"
+        );
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 2,
+                phase: PHASE_PLACE.to_string(),
+                current_actor: 1
+            },
+            "increment 3"
+        );
+
+        ts.increment_turn();
+        assert_eq!(
+            ts,
+            TurnState {
+                turn: 3,
+                phase: PHASE_PICK.to_string(),
+                current_actor: 1
+            },
+            "increment 4"
+        );
     }
 }
