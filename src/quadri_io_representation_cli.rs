@@ -21,8 +21,8 @@ static RGB_WHITE: (u8, u8, u8) = (255, 255, 255);
 static RGB_GREY: (u8, u8, u8) = (255, 204, 0);
 
 pub struct QuadriIORepresentationCLI {
-    cli_pieces: Vec<CLIGamePiece>,
-    board_letters: Vec<String>,
+    pub(crate) cli_pieces: Vec<CLIGamePiece>,
+    pub(crate) board_letters: Vec<String>,
 }
 
 struct CLIGamePiece {
@@ -187,7 +187,7 @@ impl QuadriIORepresentationCLI {
                     ix,
                     self.bank_print_or_empty(&piece_states[ix]),
                     secondix,
-                    self.bank_print_or_empty(&piece_states[secondix])
+                    self.bank_print_or_empty(&piece_states[secondix]).trim_end()
                 );
                 print_str.push_str(&this_str);
             } else {
@@ -307,13 +307,322 @@ impl QuadriIORepresentation for QuadriIORepresentationCLI {
     }
 }
 
-//TODO - write some tests
-// #[cfg(test)]
-// mod test {
-//     use super::*;
+#[cfg(test)]
+mod test_Quadri_io_representation_cli {
 
-//     #[test]
-//     fn test_fn() -> Result<(), String> {
-//         assert_eq!(left, right);
-//     }
-// }
+    use indoc::formatdoc;
+    use std::collections::HashMap;
+
+    use crate::gameboard::GameboardAndPieces;
+    use crate::gamepieces::GamePiece;
+
+    use super::*;
+
+    fn get_starting_board_state_and_piece_state<'a>(
+        pieces: &'a Vec<GamePiece>,
+    ) -> (Vec<BoardState<'a>>, Vec<PieceState<'a>>) {
+        let board_states = pieces
+            .iter()
+            .enumerate()
+            .map(|(ix, p)| BoardState {
+                square_ix: ix,
+                location_coord: GameboardAndPieces::ix_to_coord(&ix),
+                square_full: false,
+                piece: None,
+                piece_ix: None,
+            })
+            .collect();
+
+        let piece_states = pieces
+            .iter()
+            .enumerate()
+            .map(|(ix, p)| PieceState {
+                piece: p,
+                on_board: false,
+                location_coord: None,
+                piece_ix: ix,
+            })
+            .collect();
+
+        (board_states, piece_states)
+    }
+
+    fn get_test_board_states_and_piece_states<'a>(
+        pieces: &'a Vec<GamePiece>,
+    ) -> (
+        Vec<BoardState<'a>>,
+        Vec<PieceState<'a>>,
+        HashMap<usize, ColoredString>,
+    ) {
+        let (mut board_states, mut piece_states) = get_starting_board_state_and_piece_state(pieces);
+
+        let mut pp = HashMap::new();
+
+        board_states[0].square_full = true;
+        board_states[0].piece = Some(&pieces[0]);
+        board_states[0].piece_ix = Some(0);
+        piece_states[0].on_board = true;
+        piece_states[0].location_coord = Some([0, 0]);
+        pp.insert(
+            0,
+            QuadriIORepresentationCLI::get_piece_print(&piece_states[0].piece.ats),
+        );
+
+        board_states[5].square_full = true;
+        board_states[5].piece = Some(&pieces[10]);
+        board_states[5].piece_ix = Some(10);
+        piece_states[10].on_board = true;
+        piece_states[10].location_coord = Some([1, 1]);
+        pp.insert(
+            5,
+            QuadriIORepresentationCLI::get_piece_print(&piece_states[10].piece.ats),
+        );
+
+        (board_states, piece_states, pp)
+    }
+
+    #[test]
+    fn test_print() {
+        let vec1: Vec<i8> = vec![0, 0, 0, 0];
+        let vec1_actual = QuadriIORepresentationCLI::get_piece_print(&vec1);
+        let vec1_expected =
+            "▯"
+                .to_string()
+                .red()
+                .bold()
+                .on_truecolor(RGB_WHITE.0, RGB_WHITE.1, RGB_WHITE.2);
+        assert_eq!(vec1_actual, vec1_expected, "testing all zeros");
+        let vec2: Vec<i8> = vec![1, 1, 1, 1];
+        let vec2_actual = QuadriIORepresentationCLI::get_piece_print(&vec2);
+        let vec2_expected = "●"
+            .to_string()
+            .blue()
+            .bold()
+            .on_truecolor(RGB_GREY.0, RGB_GREY.1, RGB_GREY.2);
+        assert_eq!(vec2_actual, vec2_expected, "testing all ones");
+    }
+
+    #[test]
+    fn test_letter_ind_to_ind() {
+        assert_eq!(
+            QuadriIORepresentationCLI::ind_to_letter_ind(5),
+            9,
+            "testting 1,1"
+        );
+        assert_eq!(
+            QuadriIORepresentationCLI::ind_to_letter_ind(6),
+            10,
+            "testting 1,2"
+        );
+        assert_eq!(
+            QuadriIORepresentationCLI::ind_to_letter_ind(14),
+            2,
+            "testting 3,2"
+        );
+    }
+    #[test]
+    fn test_ind_to_letter_ind() {
+        assert_eq!(
+            QuadriIORepresentationCLI::letter_ind_to_ind(9),
+            5,
+            "testting 1,1"
+        );
+        assert_eq!(
+            QuadriIORepresentationCLI::letter_ind_to_ind(10),
+            6,
+            "testting 1,2"
+        );
+        assert_eq!(
+            QuadriIORepresentationCLI::letter_ind_to_ind(2),
+            14,
+            "testting 3,2"
+        );
+    }
+    #[test]
+    fn test_get_print_board_basic() {
+        let pieces = GameboardAndPieces::create_pieces();
+        let (board_states, piece_states, piece_prints_hm) =
+            get_test_board_states_and_piece_states(&pieces);
+        let repr = QuadriIORepresentationCLI::new(piece_states);
+
+        let expected: String = formatdoc! {"
+            +---+---+---+---+
+            |   |   |   |   |
+            +---+---+---+---+
+            |   |   |   |   |
+            +---+---+---+---+
+            |   | {v5} |   |   |
+            +---+---+---+---+
+            | {v0} |   |   |   |
+            +---+---+---+---+
+            ",
+            v0 = piece_prints_hm.get(&0).get_or_insert(&"wrong".red()).to_string(),
+            v5 = piece_prints_hm.get(&5).get_or_insert(&"wrong".red()).to_string()
+        };
+
+        let actual = repr.get_print_board(&board_states, false, None);
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_get_print_board_w_alpha() {
+        let pieces = GameboardAndPieces::create_pieces();
+        let (board_states, piece_states, piece_prints_hm) =
+            get_test_board_states_and_piece_states(&pieces);
+        let repr = QuadriIORepresentationCLI::new(piece_states);
+
+        let expected: String = formatdoc! {"
+            +---+---+---+---+
+            | a | b | c | d |
+            +---+---+---+---+
+            | e | f | g | h |
+            +---+---+---+---+
+            | i | {v5} | k | l |
+            +---+---+---+---+
+            | {v0} | n | o | p |
+            +---+---+---+---+
+            ",
+            v0 = piece_prints_hm.get(&0).get_or_insert(&"wrong".red()).to_string(),
+            v5 = piece_prints_hm.get(&5).get_or_insert(&"wrong".red()).to_string()
+        };
+
+        let actual = repr.get_print_board(&board_states, true, None);
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_get_print_board_w_selected() {
+        let pieces = GameboardAndPieces::create_pieces();
+        let (board_states, piece_states, piece_prints_hm) =
+            get_test_board_states_and_piece_states(&pieces);
+        let repr = QuadriIORepresentationCLI::new(piece_states);
+
+        let expected: String = formatdoc! {"
+            +---+---+---+---+
+            |   |   |   |   |
+            +---+---+---+---+
+            |   |   |   |   |
+            +---+---+---+---+
+            |   | {v5} |   |   |
+            +---+---+---+---+
+            |   |   |   |   |
+            +---+---+---+---+
+            ",
+            v5 = piece_prints_hm.get(&5).get_or_insert(&"wrong".red()).to_string()
+        };
+
+        let actual = repr.get_print_board(&board_states, false, Some(vec![[1, 1]]));
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_get_print_board_w_selected_alpha() {
+        let pieces = GameboardAndPieces::create_pieces();
+        let (board_states, piece_states, piece_prints_hm) =
+            get_test_board_states_and_piece_states(&pieces);
+        let repr = QuadriIORepresentationCLI::new(piece_states);
+
+        let expected: String = formatdoc! {"
+            +---+---+---+---+
+            | a | b | c | d |
+            +---+---+---+---+
+            | e | f | g | h |
+            +---+---+---+---+
+            | i | {v5} | k | l |
+            +---+---+---+---+
+            |   | n | o | p |
+            +---+---+---+---+
+            ",
+            v5 = piece_prints_hm.get(&5).get_or_insert(&"wrong".red()).to_string()
+        };
+
+        let actual = repr.get_print_board(&board_states, true, Some(vec![[1, 1]]));
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_get_available_board_alphas() {
+        let pieces = GameboardAndPieces::create_pieces();
+        let (board_states, piece_states, piece_prints_hm) =
+            get_test_board_states_and_piece_states(&pieces);
+        let repr = QuadriIORepresentationCLI::new(piece_states);
+
+        let actual = repr.get_available_board_alphas(&board_states);
+        let expected: HashSet<String> = HashSet::<String>::from([
+            "a".to_string(),
+            "b".to_string(),
+            "c".to_string(),
+            "d".to_string(),
+            "e".to_string(),
+            "f".to_string(),
+            "g".to_string(),
+            "h".to_string(),
+            "i".to_string(),
+            "k".to_string(),
+            "l".to_string(),
+            "n".to_string(),
+            "o".to_string(),
+            "p".to_string(),
+        ]);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_get_available_piece_ixs() {
+        let pieces = GameboardAndPieces::create_pieces();
+        let (_board_states, piece_states, _piece_prints_hm) =
+            get_test_board_states_and_piece_states(&pieces);
+        let repr = QuadriIORepresentationCLI::new(piece_states.clone());
+
+        let actual = repr.get_available_piece_ixs(&piece_states);
+        let expected: HashSet<usize> =
+            HashSet::<usize>::from([1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15]);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_get_print_piece_bank() {
+        let pieces = GameboardAndPieces::create_pieces();
+
+        let mut piece_states: Vec<PieceState> = pieces
+            .iter()
+            .enumerate()
+            .map(|(ix, p)| PieceState {
+                piece: p,
+                on_board: true,
+                location_coord: Some(GameboardAndPieces::ix_to_coord(&ix)),
+                piece_ix: ix,
+            })
+            .collect();
+
+        piece_states[0].on_board = false;
+        piece_states[0].location_coord = None;
+        piece_states[1].on_board = false;
+        piece_states[1].location_coord = None;
+        piece_states[8].on_board = false;
+        piece_states[8].location_coord = None;
+
+        let repr = QuadriIORepresentationCLI::new(piece_states.clone());
+
+        let actual = repr.get_print_piece_bank(&piece_states);
+        let expected: String = formatdoc! {"
+        0\t{v0}\t\t8\t{v8}
+        1\t{v1}\t\t9\t
+        2\t \t\t10\t
+        3\t \t\t11\t
+        4\t \t\t12\t
+        5\t \t\t13\t
+        6\t \t\t14\t
+        7\t \t\t15\t
+        ",
+            v0= QuadriIORepresentationCLI::get_piece_print(&piece_states[0].piece.ats),
+            v1= QuadriIORepresentationCLI::get_piece_print(&piece_states[1].piece.ats),
+            v8= QuadriIORepresentationCLI::get_piece_print(&piece_states[8].piece.ats)
+        };
+        assert_eq!(actual, expected);
+    }
+}

@@ -1,3 +1,4 @@
+use crate::game::Game;
 use crate::gamepieces::GamePiece;
 use crate::quadri_enumerator;
 use crate::utils;
@@ -239,7 +240,7 @@ impl GameboardAndPieces {
     }
 
     // constructors:
-    fn get_quadri_coords() -> Vec<Vec<[usize; 2]>> {
+    pub fn get_quadri_coords() -> Vec<Vec<[usize; 2]>> {
         let qe = quadri_enumerator::QuadriEnumerator::new(X_DIM, Y_DIM);
         let mut coord_sets = qe.get_horizontal(4);
         coord_sets.append(&mut qe.get_vertical(4));
@@ -247,7 +248,7 @@ impl GameboardAndPieces {
         coord_sets.append(&mut qe.get_square_corners());
         coord_sets
     }
-    fn create_pieces() -> Vec<GamePiece> {
+    pub fn create_pieces() -> Vec<GamePiece> {
         let num_pieces: usize = 4 * 4;
         (0..num_pieces)
             .map(|ix| utils::convert_to_binary(ix))
@@ -270,7 +271,7 @@ impl GameboardAndPieces {
     }
 
     // Internal utils
-    fn ix_to_coord(ix: &usize) -> [usize; 2] {
+    pub(crate) fn ix_to_coord(ix: &usize) -> [usize; 2] {
         let y = ix % X_DIM;
         let x = (ix - y) / X_DIM;
         [x, y]
