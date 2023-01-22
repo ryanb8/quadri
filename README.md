@@ -27,11 +27,11 @@ In the CLI version these attributes are:
 
 All the pieces are shown below:
 
-![quadri_pieces](docs/images/quadri_pieces.png)
+<img src="docs/images/quadri_pieces.png" alt="quadri_pieces" height="150"/>
 
 The quadri board is a 4 x 4 grid which starts empty. 
 
-![empty_board](docs/images/empty_board.png)
+<img src="docs/images/empty_board.png" alt="empty_board" height="157.5"/>
 
 ### Objective
 
@@ -41,16 +41,20 @@ Quadris can occur on:
 
 - Horizontals
 
-    ![quadri_example_horizontal](docs/images/quadri_examples/quadri_ex_horizontal.png)
+    <img src="docs/images/quadri_examples/quadri_ex_horizontal.png" alt="quadri_example_horizontal" height="157.5"/>
+
 - Verticals
-  
-    ![quadri_example_vertical](docs/images/quadri_examples/quadri_ex_vertical.png)
+    
+    <img src="docs/images/quadri_examples/quadri_ex_vertical.png" alt="quadri_example_vertical" height="157.5"/>
+
 - Diagonals
   
-    ![quadri_example_diagonal](docs/images/quadri_examples/quadri_ex_diagonal.png)
+    <img src="docs/images/quadri_examples/quadri_ex_diagonal.png" alt="quadri_example_diagonal" height="157.5"/>
 - Square Corners - including small, medium, and large squares
-  
-    ![quadri_example_square_corners_small](docs/images/quadri_examples/quadri_ex_square_small.png) ![quadri_example_square_corners_medium](docs/images/quadri_examples/quadri_ex_square_med.png) ![quadri_example_square_corners_large](docs/images/quadri_examples/quadri_ex_square_large.png)
+
+    <img src="docs/images/quadri_examples/quadri_ex_square_small.png" alt="quadri_example_square_corners_small" height="157.5"/>
+    <img src="docs/images/quadri_examples/quadri_ex_square_med.png" alt="quadri_example_square_corners_medium" height="157.5"/>
+    <img src="docs/images/quadri_examples/quadri_ex_square_large.png" alt="quadri_example_square_corners_large" height="157.5"/>
 
 ### Play 
 
