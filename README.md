@@ -2,6 +2,8 @@
 
 Quadri is a two player board game similar to Connect 4. Instead of pieces having one attribute (red or black), they have 4.
 
+<img src="docs/images/quadri.gif" alt="quadri_example" height="600"/>
+
 ## Getting Started
 
 (Coming soon - compiled binaries for your architecture!)
